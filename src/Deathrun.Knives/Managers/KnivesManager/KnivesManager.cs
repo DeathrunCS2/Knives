@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -13,6 +12,7 @@ using Sharp.Shared;
 using Sharp.Shared.Enums;
 using Sharp.Shared.GameEntities;
 using Sharp.Shared.HookParams;
+using Sharp.Shared.Listeners;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 
@@ -20,7 +20,7 @@ namespace Deathrun.Knives.Managers.KnivesManager;
 
 internal class KnivesManager(
     ILogger<KnivesManager> logger,
-    ISharedSystem sharedSystem) : IKnivesManager
+    ISharedSystem sharedSystem) : IKnivesManager, IGameListener
 {
     public static KnivesConfig Config = null!;
     
@@ -41,6 +41,8 @@ internal class KnivesManager(
         sharedSystem.GetHookManager().PlayerPostThink.InstallForward(PlayerPostThink);
         sharedSystem.GetHookManager().PlayerGetMaxSpeed.InstallHookPre(PlayerGetMaxSpeedPre);
         
+        sharedSystem.GetModSharp().InstallGameListener(this);
+        
         sharedSystem.GetClientManager().InstallCommandCallback("knife", OnClientKnivesCommand);
         sharedSystem.GetClientManager().InstallCommandCallback("knives", OnClientKnivesCommand);
         
@@ -57,6 +59,8 @@ internal class KnivesManager(
         sharedSystem.GetHookManager().PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
         sharedSystem.GetHookManager().PlayerPostThink.RemoveForward(PlayerPostThink);
         sharedSystem.GetHookManager().PlayerGetMaxSpeed.RemoveHookPre(PlayerGetMaxSpeedPre);
+        
+        sharedSystem.GetModSharp().RemoveGameListener(this);
         
         sharedSystem.GetClientManager().RemoveCommandCallback("knife", OnClientKnivesCommand);
         sharedSystem.GetClientManager().RemoveCommandCallback("knives", OnClientKnivesCommand);
@@ -174,6 +178,18 @@ internal class KnivesManager(
 
     #endregion
     
+    #region Listeners
+    
+    public void OnGameActivate()
+    {
+        sharedSystem.GetModSharp().PushTimer(() =>
+        {
+            DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives in the chat!");
+        }, Random.Shared.Next(25), GameTimerFlags.StopOnMapEnd);
+    }
+    
+    #endregion
+    
     #region Abilities
 
     private static void UpdatePlayerKnifeAbility(IDeathrunPlayer deathrunPlayer, IBaseWeapon switchedToWeapon)
@@ -269,6 +285,9 @@ internal class KnivesManager(
     public static void ReloadKnivesConfig() { LoadKnivesConfig(); }
 
     #endregion
+    
+    int IGameListener.ListenerVersion => IGameListener.ApiVersion;
+    int IGameListener.ListenerPriority => 8;
 }
 
 public class KnivesConfig
