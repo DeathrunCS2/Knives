@@ -1,0 +1,12 @@
+<Project>
+    <PropertyGroup>
+        <Authors>AquaVadis</Authors>
+        <VersionPrefix>0.0.1</VersionPrefix>
+        <VersionSuffix>0</VersionSuffix>
+        <Version>$(VersionPrefix).$(VersionSuffix)</Version>
+    </PropertyGroup>
+	<ItemGroup>
+		<PackageReference Include="ModSharp.Sharp.Shared" Version="*" PrivateAssets="all" />
+	</ItemGroup>
+
+</Project>
