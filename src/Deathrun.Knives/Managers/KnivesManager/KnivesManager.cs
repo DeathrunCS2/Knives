@@ -26,6 +26,8 @@ internal class KnivesManager(
     
     public static ConcurrentDictionary<IDeathrunPlayer, Knife> DeathrunPlayersKnives = [];
     
+    private bool _addCommandAnnouncers = false;
+    
     #region IModule
     
     public bool Init()
@@ -182,12 +184,21 @@ internal class KnivesManager(
     
     public void OnGameActivate()
     {
+        if (_addCommandAnnouncers is true) return;
+        
         sharedSystem.GetModSharp().PushTimer(() =>
         {
             DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives in the chat!");
         }, Random.Shared.Next(25), GameTimerFlags.StopOnMapEnd);
+        
+        _addCommandAnnouncers = true;
     }
-    
+
+    public void OnGameDeactivate()
+    {
+        _addCommandAnnouncers = false;
+    }
+
     #endregion
     
     #region Abilities
