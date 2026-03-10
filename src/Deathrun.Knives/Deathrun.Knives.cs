@@ -93,7 +93,7 @@ public class Knives : IModSharpModule
         
         if (DeathrunManagerApi?.Instance is { } deathrunManagerApi)
         {
-            Logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Captured Deathrun Manager Api!");
+            //Logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Captured Deathrun Manager Api!");
         }
         else
         {
