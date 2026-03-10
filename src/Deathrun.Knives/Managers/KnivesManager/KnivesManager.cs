@@ -11,6 +11,7 @@ using DeathrunManager.Shared.Objects;
 using Microsoft.Extensions.Logging;
 using Sharp.Shared;
 using Sharp.Shared.Enums;
+using Sharp.Shared.GameEntities;
 using Sharp.Shared.HookParams;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
@@ -34,10 +35,11 @@ internal class KnivesManager(
         LoadKnivesConfig();
         
         sharedSystem.GetHookManager().PlayerSpawnPost.InstallForward(PlayerSpawnPost);
-        sharedSystem.GetHookManager().PlayerRunCommand.InstallHookPre(OnPlayerRunCommandPre);
+        sharedSystem.GetHookManager().PlayerSwitchWeapon.InstallForward(PlayerSwitchWeapon);
+        sharedSystem.GetHookManager().PlayerEquipWeapon.InstallForward(PlayerEquipWeapon);
         sharedSystem.GetHookManager().PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
         sharedSystem.GetHookManager().PlayerPostThink.InstallForward(PlayerPostThink);
-        sharedSystem.GetHookManager().PlayerGetMaxSpeed.InstallHookPre(OnPlayerGetMaxSpeedPre);
+        sharedSystem.GetHookManager().PlayerGetMaxSpeed.InstallHookPre(PlayerGetMaxSpeedPre);
         
         sharedSystem.GetClientManager().InstallCommandCallback("knife", OnClientKnivesCommand);
         sharedSystem.GetClientManager().InstallCommandCallback("knives", OnClientKnivesCommand);
@@ -50,10 +52,11 @@ internal class KnivesManager(
     public void Shutdown()
     {
         sharedSystem.GetHookManager().PlayerSpawnPost.RemoveForward(PlayerSpawnPost);
-        sharedSystem.GetHookManager().PlayerRunCommand.RemoveHookPre(OnPlayerRunCommandPre);
+        sharedSystem.GetHookManager().PlayerSwitchWeapon.RemoveForward(PlayerSwitchWeapon);
+        sharedSystem.GetHookManager().PlayerEquipWeapon.RemoveForward(PlayerEquipWeapon);
         sharedSystem.GetHookManager().PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
         sharedSystem.GetHookManager().PlayerPostThink.RemoveForward(PlayerPostThink);
-        sharedSystem.GetHookManager().PlayerGetMaxSpeed.RemoveHookPre(OnPlayerGetMaxSpeedPre);
+        sharedSystem.GetHookManager().PlayerGetMaxSpeed.RemoveHookPre(PlayerGetMaxSpeedPre);
         
         sharedSystem.GetClientManager().RemoveCommandCallback("knife", OnClientKnivesCommand);
         sharedSystem.GetClientManager().RemoveCommandCallback("knives", OnClientKnivesCommand);
@@ -67,20 +70,123 @@ internal class KnivesManager(
 
     private static void PlayerSpawnPost(IPlayerSpawnForwardParams parms)
     {
-        if (Knives.DeathrunManagerApi?.Instance is { } deathrunManagerApi)
-        {
-            var client = parms.Client;
-            if (client?.IsValid is not true) return;
-            
-            var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(client);
-            if (deathrunPlayer is null) return;
-            
-            if (deathrunPlayer.PlayerPawn?.IsValidEntity is not true) return;
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer?.PlayerPawn?.IsValidEntity is not true) return;
 
-            //reset
+        //reset
+        deathrunPlayer.PlayerPawn.VelocityModifier = 1;
+        deathrunPlayer.PlayerPawn.SetGravityScale(1);
+            
+        switch (deathrunPlayer.GetKnife()?.Identifier)
+        {
+            case "pocket":
+                deathrunPlayer.PlayerPawn.VelocityModifier = deathrunPlayer.GetKnife()?.Value ?? 1;
+                break;
+            case "butcher":
+                deathrunPlayer.PlayerPawn.SetGravityScale(deathrunPlayer.GetKnife()?.Value ?? 1);
+                break;
+        }
+    }
+    
+    private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        var switchedToWeapon = parms.Weapon;
+        if (switchedToWeapon?.IsValidEntity is not true) return;
+
+        var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer is null) return;
+
+        UpdatePlayerKnifeAbility(deathrunPlayer, switchedToWeapon);
+    }
+    
+    private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        var switchedToWeapon = parms.Weapon;
+        if (switchedToWeapon?.IsValidEntity is not true) return;
+
+        var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer is null) return;
+
+        UpdatePlayerKnifeAbility(deathrunPlayer, switchedToWeapon);
+    }
+    
+    private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi)
+            return default;
+        var attackerClient = sharedSystem.GetEntityManager().FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.GetGameClient();
+        if (attackerClient?.IsValid is not true) return default;
+            
+        var attackerDeathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(attackerClient);
+        var attackerDeathrunPlayerKnife = attackerDeathrunPlayer?.GetKnife();
+        if (attackerDeathrunPlayerKnife is null) return default;
+            
+        if (attackerDeathrunPlayerKnife.Identifier.Equals("machete", StringComparison.OrdinalIgnoreCase) is true)
+        {
+            parms.Damage = (int)(parms.Damage * attackerDeathrunPlayerKnife.Value);
+        }
+        
+        return default;
+    }
+
+    private static void PlayerPostThink(IPlayerThinkForwardParams parms)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer is null) return;
+            
+        DeathrunPlayersKnives.TryAdd(deathrunPlayer, Config.Knives[0]);
+            
+        deathrunPlayer.SetCenterMenuTopRowHtml
+        (
+            $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+            + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{DeathrunPlayersKnives[deathrunPlayer].Name}</font>"    
+        );
+    }
+    
+    private static HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return default;
+        
+        var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer is null) return default;
+
+        if (DeathrunPlayersKnives.TryGetValue(deathrunPlayer, out var deathrunPlayerKnife))
+        {
+            switch (deathrunPlayerKnife.Identifier)
+            {
+                case "machete": 
+                    return new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, 0.8f * 250);
+                case "pocket": 
+                    return new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, deathrunPlayerKnife.Value * 250);
+            }
+        }
+
+        return default;
+    }
+
+    #endregion
+    
+    #region Abilities
+
+    private static void UpdatePlayerKnifeAbility(IDeathrunPlayer deathrunPlayer, IBaseWeapon switchedToWeapon)
+    {
+        if (deathrunPlayer?.PlayerPawn is null) return;
+
+        if (switchedToWeapon.Classname.Contains("knife") is not true)
+        {
             deathrunPlayer.PlayerPawn.VelocityModifier = 1;
             deathrunPlayer.PlayerPawn.SetGravityScale(1);
-            
+        }
+        else
+        {
             switch (deathrunPlayer.GetKnife()?.Identifier)
             {
                 case "pocket":
@@ -93,99 +199,6 @@ internal class KnivesManager(
         }
     }
     
-    private static HookReturnValue<EmptyHookReturn> OnPlayerRunCommandPre(IPlayerRunCommandHookParams parms, HookReturnValue<EmptyHookReturn> returnValue)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is { } deathrunManagerApi)
-        {
-            var client = parms.Client;
-            if (client?.IsValid is not true) return default;
-            
-            var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(client);
-            if (deathrunPlayer is null) return default;
-
-            if (deathrunPlayer.GetKnife()?.Identifier.Equals("butcher", StringComparison.OrdinalIgnoreCase) is true)
-            {
-                var buttons = parms.KeyButtons;
-            
-                if (buttons.HasFlag(UserCommandButtons.Jump))
-                {
-                    if (Math.Abs(deathrunPlayer.PlayerPawn?.GravityScale - deathrunPlayer.GetKnife()?.Value ?? 0) > 1f)
-                    {
-                        deathrunPlayer.PlayerPawn?.SetGravityScale(deathrunPlayer.GetKnife()?.Value ?? 1);
-                    }
-                }
-            }
-            
-        }
-        
-        return default;
-    }
-
-    private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is { } deathrunManagerApi)
-        {
-            var attackerClient = sharedSystem.GetEntityManager().FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.GetGameClient();
-            if (attackerClient?.IsValid is not true) return default;
-            
-            var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(attackerClient);
-            if (deathrunPlayer is null) return default;
-
-            var deathrunPlayerKnife = deathrunPlayer.GetKnife();
-            if (deathrunPlayerKnife is null) return default;
-            
-            if (deathrunPlayerKnife.Identifier.Equals("machete", StringComparison.OrdinalIgnoreCase) is true)
-            {
-                parms.Damage = (int)(parms.Damage * deathrunPlayerKnife.Value);
-                return default;
-            }
-        }
-        
-        return default;
-    }
-
-    private static void PlayerPostThink(IPlayerThinkForwardParams parms)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is { } deathrunManagerApi)
-        {
-            var client = parms.Client;
-            if (client?.IsValid is not true) return;
-            
-            var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(client);
-            if (deathrunPlayer is null) return;
-            
-            DeathrunPlayersKnives.TryAdd(deathrunPlayer, Config.Knives[0]);
-            
-            deathrunPlayer.SetCenterMenuTopRowHtml
-            (
-                $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='magenta'>{DeathrunPlayersKnives[deathrunPlayer].Name}</font>"    
-            );
-        }
-    }
-    
-    private static HookReturnValue<float> OnPlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is { } deathrunManagerApi)
-        {
-            var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
-            if (deathrunPlayer is null) return original;
-
-            if (DeathrunPlayersKnives.TryGetValue(deathrunPlayer, out var deathrunPlayerKnife))
-            {
-                switch (deathrunPlayerKnife.Identifier)
-                {
-                    case "machete": 
-                        return new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, 0.8f * 250);
-                    case "pocket": 
-                        return new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, deathrunPlayerKnife.Value * 250);
-                }
-            }
-        }
-
-        return new();
-    }
-
     #endregion
     
     #region Commands
@@ -199,12 +212,13 @@ internal class KnivesManager(
 
             if (command.ArgCount is 0)
             {
-                deathrunPlayer.SendColoredChatMessage("{HEAD}Knives List:");
+                deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives List:");
+                deathrunPlayer.SendColoredChatMessage("{DEFAULT}Example(type in chat): /knife butcher");
                 var index = 1;
                 foreach (var knife in Config.Knives)
                 {
                     deathrunPlayer.SendColoredChatMessage(
-                        $"{{GREEN}}{index}. {{DEFAULT}}{knife.Name} | {{MUTED}}{knife.Description}"
+                        $"{{GREEN}}{index}. {{DEFAULT}}{knife.Name} | {{GREEN}}{knife.Identifier} {{DEFAULT}}| {{MUTED}}{knife.Description}"
                     );
                     index++;
                 }
