@@ -100,9 +100,7 @@ public static class DeathrunPlayerExtensions
         
         if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
 
-        //reset
-        deathrunPlayer.PlayerPawn.VelocityModifier = 1;
-        deathrunPlayer.PlayerPawn.SetGravityScale(1);
+        deathrunPlayer.ResetKnifeAbilityStates();
         
         switch (newKnife.Identifier)
         {
@@ -118,8 +116,15 @@ public static class DeathrunPlayerExtensions
     public static Knife? GetKnife(this IDeathrunPlayer deathrunPlayer)
         => KnivesManager.DeathrunPlayersKnives.GetValueOrDefault(deathrunPlayer);
     
-    public static bool HasDeathrunKnife(this IDeathrunPlayer deathrunPlayer)
+    private static bool HasDeathrunKnife(this IDeathrunPlayer deathrunPlayer)
         => KnivesManager.DeathrunPlayersKnives.ContainsKey(deathrunPlayer);
     
+    public static void ResetKnifeAbilityStates(this IDeathrunPlayer deathrunPlayer)
+    {
+        if (deathrunPlayer.PlayerPawn is null) return;
+        deathrunPlayer.PlayerPawn.VelocityModifier = 1;
+        deathrunPlayer.PlayerPawn.SetGravityScale(1);
+    }
+
     #endregion
 }

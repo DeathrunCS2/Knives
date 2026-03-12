@@ -19,19 +19,14 @@ public class Knives : IModSharpModule
     public string DisplayAuthor       => "AquaVadis";
     
     private readonly ServiceProvider  _serviceProvider;
-    private static ISharedSystem      _sharedSystem = null!;
-    public static ISharedSystem SharedSystem => _sharedSystem;
-    
-    public static IModSharpModuleInterface<IDeathrunManager>?  DeathrunManagerApi;
     
 #pragma warning disable CA2211
-
+    public static IModSharpModuleInterface<IDeathrunManager>?  DeathrunManagerApi;
     public static string ModulePath                 = "";
-    public static ILogger<Knives> Logger   = null!;
-    public static InterfaceBridge Bridge            = null!;
-    public static Knives Instance          = null!;
-    
 #pragma warning restore CA2211
+    
+    public static InterfaceBridge Bridge            = null!;
+    private static ILogger<Knives> _logger          = null!;
     
     public Knives(ISharedSystem sharedSystem,
         string                   dllPath,
@@ -42,9 +37,7 @@ public class Knives : IModSharpModule
     {
         ModulePath = dllPath;
         Bridge = new InterfaceBridge(dllPath, sharpPath, version, sharedSystem);
-        Instance = this;
-        Logger = sharedSystem.GetLoggerFactory().CreateLogger<Knives>();
-        _sharedSystem = sharedSystem;
+        _logger = sharedSystem.GetLoggerFactory().CreateLogger<Knives>();
         
         var configuration = new ConfigurationBuilder()
                                 .AddJsonFile(Path.Combine(dllPath, "base.json"), true, false)
@@ -53,9 +46,11 @@ public class Knives : IModSharpModule
         var services = new ServiceCollection();
 
         services.AddSingleton(Bridge);
+        services.AddSingleton(Bridge.ModSharp);
+        services.AddSingleton(Bridge.HookManager);
+        services.AddSingleton(Bridge.EntityManager);
         services.AddSingleton(Bridge.ClientManager);
         services.AddSingleton(sharedSystem);
-        services.AddSingleton(sharedSystem.GetConVarManager());
         services.AddSingleton<IConfiguration>(configuration);
         services.AddSingleton(sharedSystem.GetLoggerFactory());
         services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
@@ -68,7 +63,7 @@ public class Knives : IModSharpModule
     
     public bool Init()
     {
-        Logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Load Deathrun Knives!");
+        _logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Load Deathrun Knives!");
         
         //load managers
         CallInit<IManager>();
@@ -83,7 +78,7 @@ public class Knives : IModSharpModule
 
         _serviceProvider.ShutdownAllSharpExtensions();
         
-        Logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Unloaded Deathrun Knives!");
+        _logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Unloaded Deathrun Knives!");
     }
 
     public void OnAllModulesLoaded()
@@ -91,13 +86,9 @@ public class Knives : IModSharpModule
         DeathrunManagerApi 
             = Bridge.SharpModuleManager.GetOptionalSharpModuleInterface<IDeathrunManager>(IDeathrunManager.Identity);
         
-        if (DeathrunManagerApi?.Instance is { } deathrunManagerApi)
+        if (DeathrunManagerApi?.Instance is not { } deathrunManagerApi)
         {
-            //Logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Captured Deathrun Manager Api!");
-        }
-        else
-        {
-            Logger.LogError("Failed to capture Deathrun Manager Api!");
+            _logger.LogError("Failed to capture Deathrun Manager Api!");
             return;
         }
 
@@ -120,7 +111,7 @@ public class Knives : IModSharpModule
         {
             if (!service.Init())
             {
-                Logger.LogError("Failed to Init {service}!", service.GetType().FullName);
+                _logger.LogError("Failed to Init {service}!", service.GetType().FullName);
 
                 return -1;
             }
@@ -141,7 +132,7 @@ public class Knives : IModSharpModule
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "An error occurred while calling PostInit in {m}", service.GetType().Name);
+                _logger.LogError(e, "An error occurred while calling PostInit in {m}", service.GetType().Name);
             }
         }
     }
@@ -156,7 +147,7 @@ public class Knives : IModSharpModule
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "An error occurred while calling Shutdown in {m}", service.GetType().Name);
+                _logger.LogError(e, "An error occurred while calling Shutdown in {m}", service.GetType().Name);
             }
         }
     }
@@ -171,7 +162,7 @@ public class Knives : IModSharpModule
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "An error occurred while calling OnAllSharpModulesLoaded in {m}", service.GetType().Name);
+                _logger.LogError(e, "An error occurred while calling OnAllSharpModulesLoaded in {m}", service.GetType().Name);
             }
         }
     }
