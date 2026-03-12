@@ -264,7 +264,7 @@ internal class KnivesManager(
         if (command.ArgCount is not 1)
             return ECommandAction.Stopped;
         
-        var targetKnife = command.GetArg(1);
+        var targetKnife = command.GetArg(1).ToLower();
         var knifeIdentifiers = Config.Knives.Select(knife => knife.Identifier).ToArray();
 
         if (knifeIdentifiers.Contains(targetKnife) is not true)
