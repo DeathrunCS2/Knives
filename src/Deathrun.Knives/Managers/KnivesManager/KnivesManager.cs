@@ -199,7 +199,7 @@ internal class KnivesManager(
         
         modSharp.PushTimer(() =>
         {
-            DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives in the chat!");
+            DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives {DEFAULT}in the chat!");
         }, Random.Shared.Next(25), GameTimerFlags.StopOnMapEnd);
         
         _addCommandAnnouncers = true;
@@ -248,8 +248,8 @@ internal class KnivesManager(
 
         if (command.ArgCount is 0)
         {
-            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives List {PURPLE}(Special trait applies only when holding the knife){DEFAULT}: ");
-            deathrunPlayer.SendColoredChatMessage("{SILVER}Example: /knife butcher");
+            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives{PURPLE}(Special trait applies only when holding the knife){DEFAULT}: ");
+            deathrunPlayer.SendColoredChatMessage("{LIGHTBLUE}Example: /knife butcher");
             var index = 1;
             foreach (var knife in Config.Knives)
             {
