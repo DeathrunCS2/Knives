@@ -25,6 +25,7 @@ internal class KnivesManager(
     IEntityManager entityManager,
     IClientManager clientManager) : IKnivesManager, IGameListener
 {
+    private static IGlobalVars? _globalVars = null;
     public static KnivesConfig Config = null!;
     
     public static readonly ConcurrentDictionary<IDeathrunPlayer, Knife> DeathrunPlayersKnives = [];
@@ -150,6 +151,22 @@ internal class KnivesManager(
             $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
             + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{DeathrunPlayersKnives[deathrunPlayer].Name}</font>"    
         );
+        
+        //limit to every 6 seconds
+        if (_globalVars?.TickCount % 384 is not 0) return;
+        
+        //skip if the player's knife is not the default type
+        if (deathrunPlayer.GetKnife()?.Identifier.Equals("default") is not true) return;
+            
+        //skip invalid/dead players
+        if (deathrunPlayer.IsValidAndAlive is not true || deathrunPlayer.PlayerPawn is null) return;
+        
+        if (deathrunPlayer.PlayerPawn.Health >= 100) return;
+        
+        var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
+        if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
+
+        deathrunPlayer.PlayerPawn.Health += (int) (deathrunPlayer.GetKnife()?.Value ?? 3);
     }
     
     private static HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
@@ -174,6 +191,7 @@ internal class KnivesManager(
     #endregion
     
     #region Listeners
+    public void OnServerInit() => _globalVars = modSharp.GetGlobals();
     
     public void OnGameActivate()
     {
@@ -301,8 +319,8 @@ public class KnivesConfig
         new Knife()
         {
             Identifier = "default",
-            Name = "Default knife",
-            Description = "Health regen over time.",
+            Name = "Default",
+            Description = "Regenerates health every 6 seconds.",
             Value = 3
         },
         new Knife()
