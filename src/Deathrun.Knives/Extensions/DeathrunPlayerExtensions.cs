@@ -94,10 +94,9 @@ public static class DeathrunPlayerExtensions
 
     public static void SelectKnife(this IDeathrunPlayer deathrunPlayer, Knife newKnife)
     {
-        var selectedKnives = KnivesManager.DeathrunPlayersKnives;
-        if (selectedKnives.ContainsKey(deathrunPlayer) is not true) return;
+        if (deathrunPlayer.HasDeathrunKnife() is not true) return;
 
-        selectedKnives[deathrunPlayer] = newKnife;
+        KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
         
         if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
 
@@ -118,6 +117,9 @@ public static class DeathrunPlayerExtensions
     
     public static Knife? GetKnife(this IDeathrunPlayer deathrunPlayer)
         => KnivesManager.DeathrunPlayersKnives.GetValueOrDefault(deathrunPlayer);
+    
+    public static bool HasDeathrunKnife(this IDeathrunPlayer deathrunPlayer)
+        => KnivesManager.DeathrunPlayersKnives.ContainsKey(deathrunPlayer);
     
     #endregion
 }

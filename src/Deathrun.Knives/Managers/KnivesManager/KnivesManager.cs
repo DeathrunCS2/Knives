@@ -84,7 +84,7 @@ internal class KnivesManager(
         //reset
         deathrunPlayer.PlayerPawn.VelocityModifier = 1;
         deathrunPlayer.PlayerPawn.SetGravityScale(1);
-            
+        
         switch (deathrunPlayer.GetKnife()?.Identifier)
         {
             case "pocket":
@@ -124,18 +124,16 @@ internal class KnivesManager(
     
     private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi)
-            return default;
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return default;
+        
         var attackerClient = sharedSystem.GetEntityManager().FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.GetGameClient();
         if (attackerClient?.IsValid is not true) return default;
             
         var attackerDeathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(attackerClient);
-        var attackerDeathrunPlayerKnife = attackerDeathrunPlayer?.GetKnife();
-        if (attackerDeathrunPlayerKnife is null) return default;
             
-        if (attackerDeathrunPlayerKnife.Identifier.Equals("machete", StringComparison.OrdinalIgnoreCase) is true)
+        if (attackerDeathrunPlayer?.GetKnife()?.Identifier.Equals("machete", StringComparison.OrdinalIgnoreCase) is true)
         {
-            parms.Damage = (int)(parms.Damage * attackerDeathrunPlayerKnife.Value);
+            parms.Damage = (int)(parms.Damage * attackerDeathrunPlayer.GetKnife()?.Value ?? 1);
         }
         
         return default;
@@ -162,20 +160,15 @@ internal class KnivesManager(
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return default;
         
         var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(parms.Client);
-        if (deathrunPlayer is null) return default;
+        var deathrunPlayerKnife = deathrunPlayer?.GetKnife();
+        if (deathrunPlayerKnife is null) return default;
 
-        if (DeathrunPlayersKnives.TryGetValue(deathrunPlayer, out var deathrunPlayerKnife))
+        return deathrunPlayerKnife.Identifier switch
         {
-            switch (deathrunPlayerKnife.Identifier)
-            {
-                case "machete": 
-                    return new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, 0.8f * 250);
-                case "pocket": 
-                    return new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, deathrunPlayerKnife.Value * 250);
-            }
-        }
-
-        return default;
+            "machete" => new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, 0.8f * 250),
+            "pocket" => new HookReturnValue<float>(EHookAction.SkipCallReturnOverride, deathrunPlayerKnife.Value * 250),
+            _ => default
+        };
     }
 
     #endregion
@@ -203,11 +196,11 @@ internal class KnivesManager(
     
     #region Abilities
 
-    private static void UpdatePlayerKnifeAbility(IDeathrunPlayer deathrunPlayer, IBaseWeapon switchedToWeapon)
+    private static void UpdatePlayerKnifeAbility(IDeathrunPlayer deathrunPlayer, IBaseWeapon weapon)
     {
         if (deathrunPlayer?.PlayerPawn is null) return;
 
-        if (switchedToWeapon.Classname.Contains("knife") is not true)
+        if (weapon.Classname.Contains("knife") is not true)
         {
             deathrunPlayer.PlayerPawn.VelocityModifier = 1;
             deathrunPlayer.PlayerPawn.SetGravityScale(1);
@@ -232,41 +225,43 @@ internal class KnivesManager(
     
     private static ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
     {
-        if (Knives.DeathrunManagerApi?.Instance is { } deathrunManagerApi)
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return ECommandAction.Stopped;
+        
+        var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(client);
+        if (deathrunPlayer is null) return ECommandAction.Stopped;
+
+        if (command.ArgCount is 0)
         {
-            var deathrunPlayer = deathrunManagerApi.GetPlayersManager.GetDeathrunPlayer(client);
-            if (deathrunPlayer is null) return ECommandAction.Stopped;
-
-            if (command.ArgCount is 0)
+            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives List:");
+            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Example(type in chat): /knife butcher");
+            var index = 1;
+            foreach (var knife in Config.Knives)
             {
-                deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives List:");
-                deathrunPlayer.SendColoredChatMessage("{DEFAULT}Example(type in chat): /knife butcher");
-                var index = 1;
-                foreach (var knife in Config.Knives)
-                {
-                    deathrunPlayer.SendColoredChatMessage(
-                        $"{{GREEN}}{index}. {{DEFAULT}}{knife.Name} | {{GREEN}}{knife.Identifier} {{DEFAULT}}| {{MUTED}}{knife.Description}"
-                    );
-                    index++;
-                }
+                deathrunPlayer.SendColoredChatMessage(
+                    $"{{GREEN}}{index}. {{DEFAULT}}{knife.Name} | {{GREEN}}{knife.Identifier} {{DEFAULT}}| {{MUTED}}{knife.Description}"
+                );
+                index++;
             }
-            else if (command.ArgCount is 1)
-            {
-                var targetKnife = command.GetArg(1);
-                var knifeIdentifiers = Config.Knives.Select(knife => knife.Identifier).ToArray();
-
-                if (knifeIdentifiers.Contains(targetKnife) is not true)
-                {
-                    deathrunPlayer.SendColoredChatMessage("{RED}Invalid {DEFAULT}knife option!");
-                    return ECommandAction.Stopped;
-                }
-
-                var knife = Config.Knives.First(knife =>
-                    knife.Identifier.Equals(targetKnife, StringComparison.OrdinalIgnoreCase));
-
-                deathrunPlayer.SelectKnife(knife);
-            }
+            return ECommandAction.Stopped;
         }
+
+        if (command.ArgCount is not 1)
+            return ECommandAction.Stopped;
+        
+        var targetKnife = command.GetArg(1);
+        var knifeIdentifiers = Config.Knives.Select(knife => knife.Identifier).ToArray();
+
+        if (knifeIdentifiers.Contains(targetKnife) is not true)
+        {
+            deathrunPlayer.SendColoredChatMessage("{RED}Invalid {DEFAULT}knife option!");
+            return ECommandAction.Stopped;
+        }
+
+        var newKnife = Config.Knives.First(knife =>
+            knife.Identifier.Equals(targetKnife, StringComparison.OrdinalIgnoreCase));
+
+        deathrunPlayer.SelectKnife(newKnife);
+        
         return ECommandAction.Stopped;
     }
     
