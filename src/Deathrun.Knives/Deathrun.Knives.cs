@@ -15,7 +15,7 @@ namespace Deathrun.Knives;
 
 public class Knives : IModSharpModule
 {
-    public string DisplayName         => $"[Deathrun] Knives - Last Build Time: {Bridge.FileTime}";
+    public string DisplayName         => $"[Deathrun][Module] Knives - Last Build Time: {Bridge.FileTime}";
     public string DisplayAuthor       => "AquaVadis";
     
     private readonly ServiceProvider  _serviceProvider;
