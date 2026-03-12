@@ -248,7 +248,7 @@ internal class KnivesManager(
 
         if (command.ArgCount is 0)
         {
-            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives List:");
+            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives List(Special trait applies only when holding the knife): ");
             deathrunPlayer.SendColoredChatMessage("{GREY}Example(type in chat): /knife butcher");
             var index = 1;
             foreach (var knife in Config.Knives)
@@ -327,22 +327,22 @@ public class KnivesConfig
         {
             Identifier = "machete",
             Name = "Machete",
-            Description = "More Damage/Low Speed.",
+            Description = "(x2) Damage | -20% Speed.",
             Value = 2.0f
         },
         new Knife()
         {
             Identifier = "pocket",
-            Name = "Pocket knife",
-            Description = "High speed.",
-            Value = 1.20f
+            Name = "Pocket",
+            Description = "+30% Speed.",
+            Value = 1.30f
         },
         new Knife()
         {
             Identifier = "butcher",
-            Name = "Butcher knife",
-            Description = "Low Gravity.",
-            Value = 0.7f
+            Name = "Butcher",
+            Description = "-35% Gravity.",
+            Value = 0.65f
         }
     };
 }
