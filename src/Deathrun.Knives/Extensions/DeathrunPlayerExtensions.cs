@@ -81,35 +81,35 @@ public static class DeathrunPlayerExtensions
 
     public static void SelectKnife(this IDeathrunPlayer deathrunPlayer, Knife newKnife)
     {
-        if (KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife) is not true)
-        {
-            KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
-            
-            if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
+        KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife);
+        
+        KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
+        
+        if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
 
-            deathrunPlayer.ResetKnifeAbilityStates();
-    
-            switch (newKnife.Identifier)
-            {
-                case "pocket":
-                    deathrunPlayer.PlayerPawn.VelocityModifier = newKnife.Value;
-                    break;
-                case "butcher":
-                    deathrunPlayer.PlayerPawn.SetGravityScale(newKnife.Value);
-                    break;
-            }   
+        var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
+        if (activeWeapon?.IsValidEntity is not true 
+            || activeWeapon.Classname.Contains("knife") is not true) return;
+        
+        deathrunPlayer.ResetKnifeAbilityStates();
+
+        switch (newKnife.Identifier)
+        {
+            case "pocket":
+                deathrunPlayer.PlayerPawn.VelocityModifier = newKnife.Value;
+                break;
+            case "butcher":
+                deathrunPlayer.PlayerPawn.SetGravityScale(newKnife.Value);
+                break;
         }
     }
     
     public static Knife? GetKnife(this IDeathrunPlayer deathrunPlayer)
         => KnivesManager.DeathrunPlayersKnives.GetValueOrDefault(deathrunPlayer);
     
-    private static bool HasDeathrunKnife(this IDeathrunPlayer deathrunPlayer)
-        => KnivesManager.DeathrunPlayersKnives.ContainsKey(deathrunPlayer);
-    
     public static void ResetKnifeAbilityStates(this IDeathrunPlayer deathrunPlayer)
     {
-        if (deathrunPlayer.PlayerPawn is null) return;
+        if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
         deathrunPlayer.PlayerPawn.VelocityModifier = 1;
         deathrunPlayer.PlayerPawn.SetGravityScale(1);
     }

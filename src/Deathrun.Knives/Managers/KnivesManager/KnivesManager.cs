@@ -135,20 +135,22 @@ internal class KnivesManager(
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
         
         var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
-        if (deathrunPlayer is null) return;
-        DeathrunPlayersKnives.TryAdd(deathrunPlayer, Config.Knives[0]);
-            
+        if (deathrunPlayer?.IsValid is not true) return;
+        
+        var deathrunPlayerKnife = deathrunPlayer.GetKnife();
+        if (deathrunPlayerKnife is null) return;
+        
         deathrunPlayer.SetCenterMenuTopRowHtml
         (
             $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-            + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{DeathrunPlayersKnives[deathrunPlayer].Name}</font>"    
+            + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayerKnife.Name}</font>"    
         );
         
         //limit to every 6 seconds
         if (_globalVars?.TickCount % 384 is not 0) return;
         
         //skip if the player's knife is not the default type
-        if (deathrunPlayer.GetKnife()?.Identifier.Equals("default") is not true) return;
+        if (deathrunPlayerKnife.Identifier.Equals("default") is not true) return;
             
         //skip invalid/dead players
         if (deathrunPlayer.IsValidAndAlive is not true || deathrunPlayer.PlayerPawn is null) return;
@@ -158,7 +160,7 @@ internal class KnivesManager(
         var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
         if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
 
-        deathrunPlayer.PlayerPawn.Health += (int) (deathrunPlayer.GetKnife()?.Value ?? 3);
+        deathrunPlayer.PlayerPawn.Health += (int) (deathrunPlayerKnife.Value);
         
         //clamp health to 100
         if (deathrunPlayer.PlayerPawn.Health > 100) deathrunPlayer.PlayerPawn.Health = 100;
