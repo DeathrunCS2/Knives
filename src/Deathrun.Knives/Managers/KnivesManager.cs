@@ -325,6 +325,18 @@ internal class KnivesManager(
     }
     
     #endregion
+
+    #region Knife methods
+
+    private static void SetKnife(ulong steamId64, string knifeIdentifier)
+    {
+        var newKnife = Config.Knives.FirstOrDefault(knife => knife.Identifier.Equals(knifeIdentifier, StringComparison.OrdinalIgnoreCase));
+        if (newKnife is null) return;
+        
+        DeathrunPlayersKnives[steamId64] = newKnife;
+    }
+
+    #endregion
     
     #region Knives Config
     
