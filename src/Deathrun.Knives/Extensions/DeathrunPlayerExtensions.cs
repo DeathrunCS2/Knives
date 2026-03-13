@@ -81,18 +81,17 @@ public static class DeathrunPlayerExtensions
 
     public static void SelectKnife(this IDeathrunPlayer deathrunPlayer, Knife newKnife)
     {
+        KnivesManager.DeathrunPlayersKnives.TryRemove(deathrunPlayer, out _);
+        
         KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife);
         
-        KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
-        
         if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
-
-        var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
-        if (activeWeapon?.IsValidEntity is not true 
-            || activeWeapon.Classname.Contains("knife") is not true) return;
         
         deathrunPlayer.ResetKnifeAbilityStates();
 
+        var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
+        if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
+        
         switch (newKnife.Identifier)
         {
             case "pocket":
