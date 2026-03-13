@@ -90,19 +90,6 @@ internal class KnivesManager(
     {
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
         
-        var switchedToWeapon = parms.Weapon;
-        if (switchedToWeapon?.IsValidEntity is not true) return;
-        
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
-        if (deathrunPlayer is null) return;
-
-        UpdateKnifeAbilityState(deathrunPlayer, switchedToWeapon);
-    }
-    
-    private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
         var equippedWeapon = parms.Weapon;
         if (equippedWeapon?.IsValidEntity is not true) return;
         
@@ -110,6 +97,19 @@ internal class KnivesManager(
         if (deathrunPlayer is null) return;
 
         UpdateKnifeAbilityState(deathrunPlayer, equippedWeapon);
+    }
+    
+    private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        var switchedToWeapon = parms.Weapon;
+        if (switchedToWeapon?.IsValidEntity is not true) return;
+        
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer is null) return;
+
+        UpdateKnifeAbilityState(deathrunPlayer, switchedToWeapon);
     }
     
     private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
