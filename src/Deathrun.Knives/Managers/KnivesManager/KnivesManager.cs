@@ -18,6 +18,7 @@ using Sharp.Shared.Managers;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Dapper;
+using DeathrunManager.Shared.Enums;
 
 namespace Deathrun.Knives.Managers.KnivesManager;
 
@@ -41,7 +42,6 @@ internal class KnivesManager(
     {
         LoadKnivesConfig();
         
-        hookManager.PlayerSpawnPost.InstallForward(PlayerSpawnPost);
         hookManager.PlayerSwitchWeapon.InstallForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.InstallForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
@@ -70,7 +70,6 @@ internal class KnivesManager(
 
     public void Shutdown()
     {
-        hookManager.PlayerSpawnPost.RemoveForward(PlayerSpawnPost);
         hookManager.PlayerSwitchWeapon.RemoveForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.RemoveForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
@@ -87,26 +86,6 @@ internal class KnivesManager(
     #endregion
 
     #region Hooks
-
-    private static void PlayerSpawnPost(IPlayerSpawnForwardParams parms)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
-        if (deathrunPlayer?.IsValid is not true || deathrunPlayer.PlayerPawn is null) return;
-        
-        deathrunPlayer.ResetKnifeAbilityStates();
-        
-        switch (deathrunPlayer.GetKnife()?.Identifier)
-        {
-            case "pocket":
-                deathrunPlayer.PlayerPawn.VelocityModifier = deathrunPlayer.GetKnife()?.Value ?? 1;
-                break;
-            case "butcher":
-                deathrunPlayer.PlayerPawn.SetGravityScale(deathrunPlayer.GetKnife()?.Value ?? 1);
-                break;
-        }
-    }
     
     private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
     {
@@ -114,24 +93,24 @@ internal class KnivesManager(
         
         var switchedToWeapon = parms.Weapon;
         if (switchedToWeapon?.IsValidEntity is not true) return;
-
+        
         var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
 
-        UpdatePlayerKnifeAbility(deathrunPlayer, switchedToWeapon);
+        UpdateKnifeAbilityState(deathrunPlayer, switchedToWeapon);
     }
     
     private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
     {
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
         
-        var switchedToWeapon = parms.Weapon;
-        if (switchedToWeapon?.IsValidEntity is not true) return;
-
+        var equippedWeapon = parms.Weapon;
+        if (equippedWeapon?.IsValidEntity is not true) return;
+        
         var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
 
-        UpdatePlayerKnifeAbility(deathrunPlayer, switchedToWeapon);
+        UpdateKnifeAbilityState(deathrunPlayer, equippedWeapon);
     }
     
     private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
@@ -263,14 +242,19 @@ internal class KnivesManager(
         var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
         if (deathrunPlayer is null) return;
         
-        Task.Run(() => SaveSelectedKnifeToDatabase(deathrunPlayer.Client.SteamId, deathrunPlayer.GetKnife()?.Identifier ?? "error"));
+        Task.Run(async () =>
+        {
+            await SaveSelectedKnifeToDatabase(deathrunPlayer.Client.SteamId, deathrunPlayer.GetKnife()?.Identifier ?? "error");
+            
+            DeathrunPlayersKnives.TryRemove(deathrunPlayer, out _);
+        });
     }
     
     #endregion
     
     #region State update method/s
 
-    private static void UpdatePlayerKnifeAbility(IDeathrunPlayer deathrunPlayer, IBaseWeapon currentWeapon)
+    private static void UpdateKnifeAbilityState(IDeathrunPlayer deathrunPlayer, IBaseWeapon currentWeapon)
     {
         if (deathrunPlayer?.IsValidAndAlive is not true || deathrunPlayer.PlayerPawn is null) return;
 

@@ -81,14 +81,14 @@ public static class DeathrunPlayerExtensions
 
     public static void SelectKnife(this IDeathrunPlayer deathrunPlayer, Knife newKnife)
     {
-        if (KnivesManager.DeathrunPlayersKnives.ContainsKey(deathrunPlayer) is true)
+        if (KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife) is not true)
         {
             KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
-        
+            
             if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
 
             deathrunPlayer.ResetKnifeAbilityStates();
-        
+    
             switch (newKnife.Identifier)
             {
                 case "pocket":
@@ -98,10 +98,6 @@ public static class DeathrunPlayerExtensions
                     deathrunPlayer.PlayerPawn.SetGravityScale(newKnife.Value);
                     break;
             }   
-        }
-        else
-        {
-            KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife);
         }
     }
     
