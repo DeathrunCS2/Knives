@@ -13,21 +13,6 @@ public static class DeathrunPlayerExtensions
 {
     #region Chat
     
-    public static void SendColoredChatMessage(this IDeathrunPlayer deathrunPlayer, string message = "")
-    {
-        if (string.IsNullOrEmpty(message) is true)
-        {
-            message = "Global message placeholder!";
-        }
-        
-        var coloredPrefix = ProcessColorCodes(KnivesManager.Config.Prefix);
-        var coloredMessage = ProcessColorCodes(message);
-
-        var coloredChatMessage = " " + coloredPrefix + " " + coloredMessage;
-
-        Knives.Bridge.ModSharp.PrintChannelFilter(HudPrintChannel.Chat, coloredChatMessage, new RecipientFilter(deathrunPlayer.Client.Slot)); 
-    }
-    
     public static void SendColoredAllChatMessage(string message = "")
     {
         if (string.IsNullOrEmpty(message) is true)

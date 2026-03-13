@@ -248,12 +248,12 @@ internal class KnivesManager(
 
         if (command.ArgCount is 0)
         {
-            deathrunPlayer.SendColoredChatMessage("{DEFAULT}Knives{PURPLE}(Special trait applies only when holding the knife){DEFAULT}: ");
-            deathrunPlayer.SendColoredChatMessage("{LIGHTBLUE}Example: /knife butcher");
+            deathrunPlayer.SendChatMessage("{DEFAULT}Knives{PURPLE}(Special trait applies only when holding the knife){DEFAULT}: ");
+            deathrunPlayer.SendChatMessage("{LIGHTBLUE}Example: /knife butcher");
             var index = 1;
             foreach (var knife in Config.Knives)
             {
-                deathrunPlayer.SendColoredChatMessage(
+                deathrunPlayer.SendChatMessage(
                     $"{{GREEN}}{index}. {{GREEN}}{knife.Name} {{DEFAULT}}| {{GOLD}}{knife.Description}"
                 );
                 index++;
@@ -269,7 +269,7 @@ internal class KnivesManager(
 
         if (knifeIdentifiers.Contains(targetKnife) is not true)
         {
-            deathrunPlayer.SendColoredChatMessage("{RED}Invalid {DEFAULT}knife option!");
+            deathrunPlayer.SendChatMessage("{RED}Invalid {DEFAULT}knife option!");
             return ECommandAction.Stopped;
         }
 
