@@ -4,7 +4,6 @@ using Deathrun.Knives.Managers.Native.ClientListener;
 using Deathrun.Knives.Managers.Native.Event;
 using Deathrun.Knives.Managers.Native.GameListener;
 using Deathrun.Knives.Extensions;
-using Deathrun.Knives.Interfaces.Managers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Deathrun.Knives.Managers;

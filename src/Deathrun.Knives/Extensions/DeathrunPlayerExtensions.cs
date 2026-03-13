@@ -77,9 +77,9 @@ public static class DeathrunPlayerExtensions
 
     public static void SelectKnife(this IDeathrunPlayer deathrunPlayer, Knife newKnife)
     {
-        KnivesManager.DeathrunPlayersKnives.TryRemove(deathrunPlayer, out _);
+        KnivesManager.DeathrunPlayersKnives.TryRemove(deathrunPlayer.Client.SteamId, out _);
         
-        KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife);
+        KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer.Client.SteamId, newKnife);
         
         if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
         
@@ -100,7 +100,7 @@ public static class DeathrunPlayerExtensions
     }
     
     public static Knife? GetKnife(this IDeathrunPlayer deathrunPlayer)
-        => KnivesManager.DeathrunPlayersKnives.GetValueOrDefault(deathrunPlayer);
+        => KnivesManager.DeathrunPlayersKnives.GetValueOrDefault(deathrunPlayer.Client.SteamId);
     
     public static void ResetKnifeAbilityStates(this IDeathrunPlayer deathrunPlayer)
     {
