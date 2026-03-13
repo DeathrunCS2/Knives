@@ -214,9 +214,7 @@ internal class KnivesManager(
     {
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
         
-        if (Config.SaveKnivesToDatabase is not true) return;
-        
-        if (client?.IsValid is not true || client.SteamId == 0) return;
+        if (Config.SaveKnivesToDatabase is not true || client.SteamId == 0) return;
         
         //try getting saved knife from the database
         modSharp.PushTimer(() =>
