@@ -1,4 +1,4 @@
-using Deathrun.Speedometer.Interfaces.Managers;
+using Deathrun.Knives.Interfaces.Managers;
 using Sharp.Shared.Enums;
 using Sharp.Shared.Objects;
 

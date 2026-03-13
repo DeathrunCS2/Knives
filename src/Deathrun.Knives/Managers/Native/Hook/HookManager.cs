@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Deathrun.Knives.Interfaces.Managers.Native;
-using Deathrun.Speedometer.Interfaces.Managers;
+using Deathrun.Knives.Interfaces.Managers;
 using Microsoft.Extensions.Logging;
 using Sharp.Shared.Hooks;
 

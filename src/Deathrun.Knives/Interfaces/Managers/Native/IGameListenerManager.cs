@@ -1,5 +1,5 @@
 
-using Deathrun.Speedometer.Interfaces.Managers;
+using Deathrun.Knives.Interfaces.Managers;
 
 namespace Deathrun.Knives.Interfaces.Managers.Native;
 

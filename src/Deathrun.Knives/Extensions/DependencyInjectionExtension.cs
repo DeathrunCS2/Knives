@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Deathrun.Speedometer.Extensions;
+namespace Deathrun.Knives.Extensions;
 
 internal static class DependencyInjectionExtensions
 {

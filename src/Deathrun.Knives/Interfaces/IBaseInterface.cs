@@ -1,4 +1,4 @@
-namespace Deathrun.Speedometer.Interfaces;
+namespace Deathrun.Knives.Interfaces;
 
 public interface IBaseInterface
 {

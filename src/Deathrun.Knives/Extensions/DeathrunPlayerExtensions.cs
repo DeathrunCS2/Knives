@@ -1,12 +1,8 @@
-using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using Deathrun.Knives.Managers.KnivesManager;
+using Deathrun.Knives.Managers;
 using DeathrunManager.Shared.Objects;
 using Sharp.Shared.Definition;
 using Sharp.Shared.Enums;
-using Sharp.Shared.GameEntities;
 using Sharp.Shared.Types;
 
 namespace Deathrun.Knives.Extensions;

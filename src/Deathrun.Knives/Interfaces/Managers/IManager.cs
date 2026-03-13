@@ -1,3 +1,3 @@
-namespace Deathrun.Speedometer.Interfaces.Managers;
+namespace Deathrun.Knives.Interfaces.Managers;
 
 public interface IManager : IBaseInterface;

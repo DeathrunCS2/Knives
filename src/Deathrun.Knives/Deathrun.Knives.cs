@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using Deathrun.Knives.Managers;
-using Deathrun.Speedometer.Interfaces;
-using Deathrun.Speedometer.Interfaces.Managers;
+using Deathrun.Knives.Interfaces;
+using Deathrun.Knives.Interfaces.Managers;
 using DeathrunManager.Shared;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
