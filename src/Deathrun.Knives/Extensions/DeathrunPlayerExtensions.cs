@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using Deathrun.Knives.Managers.KnivesManager;
 using DeathrunManager.Shared.Objects;
 using Sharp.Shared.Definition;
@@ -79,22 +81,27 @@ public static class DeathrunPlayerExtensions
 
     public static void SelectKnife(this IDeathrunPlayer deathrunPlayer, Knife newKnife)
     {
-        if (deathrunPlayer.HasDeathrunKnife() is not true) return;
-
-        KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
-        
-        if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
-
-        deathrunPlayer.ResetKnifeAbilityStates();
-        
-        switch (newKnife.Identifier)
+        if (KnivesManager.DeathrunPlayersKnives.ContainsKey(deathrunPlayer) is true)
         {
-            case "pocket":
-                deathrunPlayer.PlayerPawn.VelocityModifier = newKnife.Value;
-                break;
-            case "butcher":
-                deathrunPlayer.PlayerPawn.SetGravityScale(newKnife.Value);
-                break;
+            KnivesManager.DeathrunPlayersKnives[deathrunPlayer] = newKnife;
+        
+            if (deathrunPlayer.PlayerPawn?.IsAlive is not true) return;
+
+            deathrunPlayer.ResetKnifeAbilityStates();
+        
+            switch (newKnife.Identifier)
+            {
+                case "pocket":
+                    deathrunPlayer.PlayerPawn.VelocityModifier = newKnife.Value;
+                    break;
+                case "butcher":
+                    deathrunPlayer.PlayerPawn.SetGravityScale(newKnife.Value);
+                    break;
+            }   
+        }
+        else
+        {
+            KnivesManager.DeathrunPlayersKnives.TryAdd(deathrunPlayer, newKnife);
         }
     }
     

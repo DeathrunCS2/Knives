@@ -4,10 +4,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using Deathrun.Knives.Extensions;
 using Deathrun.Knives.Interfaces.Managers.SpeedManager;
 using DeathrunManager.Shared.Objects;
-using Microsoft.Extensions.Logging;
+using MySqlConnector;
 using Sharp.Shared;
 using Sharp.Shared.Enums;
 using Sharp.Shared.GameEntities;
@@ -16,6 +17,7 @@ using Sharp.Shared.Listeners;
 using Sharp.Shared.Managers;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
+using Dapper;
 
 namespace Deathrun.Knives.Managers.KnivesManager;
 
@@ -23,11 +25,12 @@ internal class KnivesManager(
     IModSharp modSharp,
     IHookManager hookManager,
     IEntityManager entityManager,
-    IClientManager clientManager) : IKnivesManager, IGameListener
+    IClientManager clientManager) : IKnivesManager, IGameListener, IClientListener
 {
     private static IGlobalVars? _globalVars = null;
     public static KnivesConfig Config = null!;
-    
+    private static string ConnectionString { get; set; } = "";
+
     public static readonly ConcurrentDictionary<IDeathrunPlayer, Knife> DeathrunPlayersKnives = [];
     
     private bool _addCommandAnnouncers = false;
@@ -45,10 +48,20 @@ internal class KnivesManager(
         hookManager.PlayerPostThink.InstallForward(PlayerPostThink);
         hookManager.PlayerGetMaxSpeed.InstallHookPre(PlayerGetMaxSpeedPre);
         
+        clientManager.InstallClientListener(this);
         modSharp.InstallGameListener(this);
         
         clientManager.InstallCommandCallback("knife", OnClientKnivesCommand);
         clientManager.InstallCommandCallback("knives", OnClientKnivesCommand);
+
+        if (Config.SaveKnivesToDatabase is true)
+        {
+            //build connection string
+            BuildDbConnectionString();
+
+            //create the necessary db tables
+            SetupDatabaseTables();
+        }
         
         return true;
     }
@@ -64,6 +77,7 @@ internal class KnivesManager(
         hookManager.PlayerPostThink.RemoveForward(PlayerPostThink);
         hookManager.PlayerGetMaxSpeed.RemoveHookPre(PlayerGetMaxSpeedPre);
         
+        clientManager.RemoveClientListener(this);
         modSharp.RemoveGameListener(this);
         
         clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
@@ -191,6 +205,8 @@ internal class KnivesManager(
     #endregion
     
     #region Listeners
+    
+    //game listeners
     public void OnServerInit() => _globalVars = modSharp.GetGlobals();
     
     public void OnGameActivate()
@@ -210,6 +226,43 @@ internal class KnivesManager(
         _addCommandAnnouncers = false;
     }
 
+    //client listeners
+    public void OnClientConnected(IGameClient client)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        if (Config.SaveKnivesToDatabase is not true) return;
+        
+        if (client?.IsValid is not true || client.SteamId == 0) return;
+        
+        //try getting saved knife from the database
+        modSharp.PushTimer(() =>
+        {
+            var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
+            if (deathrunPlayer is null) return;
+            
+            Task.Run(async () =>
+            {
+                var savedKnifeIdentifier = await GetSavedKnife(deathrunPlayer.Client.SteamId);
+                var newKnife = Config.Knives.First(knife => knife.Identifier.Equals(savedKnifeIdentifier, StringComparison.OrdinalIgnoreCase));
+                
+                deathrunPlayer.SelectKnife(newKnife);
+            });
+        } ,4f);
+    }
+    
+    public void OnClientDisconnecting(IGameClient client, NetworkDisconnectionReason reason)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+        
+        if (Config.SaveKnivesToDatabase is not true || client.SteamId == 0) return;
+        
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
+        if (deathrunPlayer is null) return;
+        
+        Task.Run(() => SaveSelectedKnifeToDatabase(deathrunPlayer.Client.SteamId, deathrunPlayer.GetKnife()?.Identifier ?? "error"));
+    }
+    
     #endregion
     
     #region State update method/s
@@ -307,13 +360,161 @@ internal class KnivesManager(
 
     #endregion
     
+    #region Async methods
+    
+    private static async Task SaveSelectedKnifeToDatabase(ulong steamId64, string currentKnifeIdentifier)
+    {
+        try
+        {
+            await using var connection = new MySqlConnection(ConnectionString);
+            await connection.OpenAsync();
+            
+            var insertUpdateKnifeQuery 
+                = $@" INSERT INTO `{Config.TableName}` 
+                      ( steamid64, `knife` )  
+                      VALUES 
+                      ( @SteamId64, @NewKnife ) 
+                      ON DUPLICATE KEY UPDATE 
+                                       `knife`  = '{currentKnifeIdentifier}'
+                    ";
+    
+            await connection.ExecuteAsync(insertUpdateKnifeQuery,
+                new {
+                    SteamId64        = steamId64, 
+                    NewKnife         = currentKnifeIdentifier
+                });
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
+    }
+    
+    private static async Task<string> GetSavedKnife(ulong steamId64)
+    {
+        try
+        {
+            await using var connection = new MySqlConnection(ConnectionString);
+            await connection.OpenAsync();
+    
+            //fast check if the player has saved lives data
+            var hasSavedKnifeData = await HasSavedKnifeData(steamId64);
+            if (hasSavedKnifeData is not true) return "default";
+            
+            //take the lives num from the database
+            var savedKnifeIdentifier = await connection.QueryFirstOrDefaultAsync<string>
+            ($@"SELECT
+                       `knife`
+                    FROM `{Config.TableName}`
+                    WHERE steamid64 = @SteamId64
+                 ",
+                new { SteamId64 = steamId64 }
+            
+            );
+            
+            return savedKnifeIdentifier ?? "default";
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
+        return "default";
+    }
+
+    private static async Task<bool> HasSavedKnifeData(ulong steamId64)
+    {
+        try
+        {
+            await using var connection = new MySqlConnection(ConnectionString);
+            await connection.OpenAsync();
+    
+            var hasSavedKnifeData 
+                = await connection.QueryFirstOrDefaultAsync<bool>
+                                    ($@"SELECT EXISTS(SELECT 1 FROM `{Config.TableName}`
+                                            WHERE steamid64 = @SteamId64 LIMIT 1)
+                                         ",
+                                        new { SteamId64 = steamId64 }
+                                    
+                                    );
+            
+            return hasSavedKnifeData;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+        
+        return false;
+    }
+    
+    #endregion
+    
+    #region ConnectionString
+
+    private static void BuildDbConnectionString() 
+    {
+        //build connection string
+        ConnectionString = new MySqlConnectionStringBuilder
+        {
+            Database = Config.Database,
+            UserID = Config.User,
+            Password = Config.Password,
+            Server = Config.Host,
+            Port = (uint)Config.Port,
+        }.ConnectionString;
+    }
+
+    #endregion
+    
+    #region Tables
+
+    private static void SetupDatabaseTables()
+    {
+        Task.Run(() => CreateDatabaseTable($@" CREATE TABLE IF NOT EXISTS `{Config.TableName}` 
+                                               (
+                                                   `id` BIGINT NOT NULL AUTO_INCREMENT,
+                                                   `steamid64` BIGINT(255) NOT NULL UNIQUE,
+                                                   `knife` VARCHAR(20) DEFAULT 'default',
+                                                    
+                                                   PRIMARY KEY (id)
+                                               )"));
+    }
+    
+    private static async Task CreateDatabaseTable(string databaseTableStringStructure)
+    {
+        try
+        {
+            await using var dbConnection = new MySqlConnection(ConnectionString);
+            dbConnection.Open();
+            
+            await dbConnection.ExecuteAsync(databaseTableStringStructure);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
+    }
+    
+    #endregion
+    
     int IGameListener.ListenerVersion => IGameListener.ApiVersion;
-    int IGameListener.ListenerPriority => 8;
+    int IGameListener.ListenerPriority => 7;
+    int IClientListener.ListenerVersion => IClientListener.ApiVersion;
+    int IClientListener.ListenerPriority => 7;
 }
 
 public class KnivesConfig
 {
     public string Prefix { get; init; } = "{GREEN}[Knives]{DEFAULT}";
+    public bool SaveKnivesToDatabase { get; init; } = true;
+    public string Host { get; init; } = "localhost";
+    public string Database { get; init; } = "database_name";
+    public string User { get; init; } = "database_user";
+    public string Password { get; init; } = "database_password";
+    public int Port { get; init; } = 3306;
+    public string TableName { get; init; } = "deathrun_knives";
     public List<Knife> Knives { get; init; } = new ()
     {
         new Knife()
