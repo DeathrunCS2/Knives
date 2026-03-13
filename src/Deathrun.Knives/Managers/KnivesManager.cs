@@ -23,6 +23,7 @@ namespace Deathrun.Knives.Managers;
 
 internal class KnivesManager(
     IModSharp modSharp,
+    IEntityManager entityManager,
     IHookManager hookManager,
     IClientManager clientManager) : IKnivesManager, IGameListener, IClientListener
 {
@@ -30,7 +31,7 @@ internal class KnivesManager(
     public static KnivesConfig Config = null!;
     private static string ConnectionString { get; set; } = "";
 
-    public static readonly ConcurrentDictionary<IDeathrunPlayer, Knife> DeathrunPlayersKnives = [];
+    public static readonly ConcurrentDictionary<ulong, Knife> DeathrunPlayersKnives = [];
     
     private bool _addCommandAnnouncers = false;
     
@@ -114,13 +115,17 @@ internal class KnivesManager(
     private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
     {
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return default;
+
+        var attackerSteamId64 = entityManager.FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.SteamId;
         
-        var attackerClient = entityManager.FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.GetGameClient();
-        if (attackerClient?.IsValid is not true) return default;
-            
-        var attackerDeathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(attackerClient);
-            
-        if (attackerDeathrunPlayer?.GetKnife()?.Identifier.Equals("machete", StringComparison.OrdinalIgnoreCase) is true)
+        var attackerDeathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(attackerSteamId64 ?? 999);
+        if (attackerDeathrunPlayer is null) return default;
+        
+        var activeWeapon = attackerDeathrunPlayer.PlayerPawn?.GetActiveWeapon();
+        if (activeWeapon?.IsValidEntity is not true 
+            || activeWeapon.Classname.Contains("knife") is not true) return default;
+        
+        if (attackerDeathrunPlayer.GetKnife()?.Identifier.Equals("machete", StringComparison.OrdinalIgnoreCase) is true)
         {
             parms.Damage = (int)(parms.Damage * attackerDeathrunPlayer.GetKnife()?.Value ?? 1);
         }
@@ -214,24 +219,16 @@ internal class KnivesManager(
         
         if (Config.SaveKnivesToDatabase is not true || client.SteamId == 0) return;
         
-        //try getting saved knife from the database
+        ulong steamId64 = client.SteamId;
+
         modSharp.PushTimer(() =>
         {
-            if (client?.IsValid is not true) return;
-            
-            var localClient = client;
-            
             Task.Run(async () =>
             {
-                var savedKnifeIdentifier = await GetSavedKnife(localClient.SteamId);
-                var newKnife = Config.Knives.First(knife => knife.Identifier.Equals(savedKnifeIdentifier, StringComparison.OrdinalIgnoreCase));
-                
-                var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(localClient);
-                if (deathrunPlayer is null) return;
-
-                deathrunPlayer.SelectKnife(newKnife);
+                var savedKnifeIdentifier = await GetSavedKnife(steamId64);
+                SetKnife(steamId64, savedKnifeIdentifier);
             });
-        } ,5f);
+        } ,6f);
     }
     
     public void OnClientDisconnecting(IGameClient client, NetworkDisconnectionReason reason)
@@ -240,18 +237,15 @@ internal class KnivesManager(
         
         if (Config.SaveKnivesToDatabase is not true || client.SteamId == 0) return;
         
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
-        if (deathrunPlayer is null) return;
+        ulong steamId64 = client.SteamId;
         
-        Task.Run(async () =>
+        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is true)
         {
-            var deathrunPlayerKnife = deathrunPlayer.GetKnife();
-            if (deathrunPlayerKnife is null) return;
-            
-            await SaveSelectedKnifeToDatabase(deathrunPlayer.Client.SteamId, deathrunPlayerKnife.Identifier);
-            
-            DeathrunPlayersKnives.TryRemove(deathrunPlayer, out _);
-        });
+            Task.Run(async () => 
+            {
+                await SaveSelectedKnifeToDatabase(steamId64, removedPlayerAndKnife.Identifier);
+            });
+        }
     }
     
     #endregion
