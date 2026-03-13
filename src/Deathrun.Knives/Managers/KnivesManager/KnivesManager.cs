@@ -181,6 +181,9 @@ internal class KnivesManager(
         if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
 
         deathrunPlayer.PlayerPawn.Health += (int) (deathrunPlayer.GetKnife()?.Value ?? 3);
+        
+        //clamp health to 100
+        if (deathrunPlayer.PlayerPawn.Health > 100) deathrunPlayer.PlayerPawn.Health = 100;
     }
     
     private static HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
