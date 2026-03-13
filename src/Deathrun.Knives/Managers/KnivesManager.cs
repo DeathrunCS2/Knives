@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Deathrun.Knives.Extensions;
-using Deathrun.Knives.Interfaces.Managers.SpeedManager;
+using Deathrun.Knives.Interfaces.Managers;
 using DeathrunManager.Shared.Objects;
 using MySqlConnector;
 using Sharp.Shared;
@@ -19,12 +19,11 @@ using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Dapper;
 
-namespace Deathrun.Knives.Managers.KnivesManager;
+namespace Deathrun.Knives.Managers;
 
 internal class KnivesManager(
     IModSharp modSharp,
     IHookManager hookManager,
-    IEntityManager entityManager,
     IClientManager clientManager) : IKnivesManager, IGameListener, IClientListener
 {
     private static IGlobalVars? _globalVars = null;
