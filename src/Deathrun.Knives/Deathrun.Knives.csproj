@@ -25,7 +25,7 @@
     
     <ItemGroup>
       <PackageReference Include="Dapper" Version="2.1.72" />
-      <PackageReference Include="DeathrunManager.Shared" Version="0.1.12" />
+      <PackageReference Include="DeathrunManager.Shared" Version="0.1.14" />
       <PackageReference Include="MySqlConnector" Version="2.5.0" />
     </ItemGroup>
     
