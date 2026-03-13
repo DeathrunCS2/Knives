@@ -243,7 +243,10 @@ internal class KnivesManager(
         
         Task.Run(async () =>
         {
-            await SaveSelectedKnifeToDatabase(deathrunPlayer.Client.SteamId, deathrunPlayer.GetKnife()?.Identifier ?? "error");
+            var deathrunPlayerKnife = deathrunPlayer.GetKnife();
+            if (deathrunPlayerKnife is null) return;
+            
+            await SaveSelectedKnifeToDatabase(deathrunPlayer.Client.SteamId, deathrunPlayerKnife.Identifier);
             
             DeathrunPlayersKnives.TryRemove(deathrunPlayer, out _);
         });
