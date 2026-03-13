@@ -136,7 +136,6 @@ internal class KnivesManager(
         
         var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
-            
         DeathrunPlayersKnives.TryAdd(deathrunPlayer, Config.Knives[0]);
             
         deathrunPlayer.SetCenterMenuTopRowHtml
