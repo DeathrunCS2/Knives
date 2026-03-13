@@ -50,9 +50,9 @@ public class Knives : IModSharpModule
         services.AddSingleton(Bridge.HookManager);
         services.AddSingleton(Bridge.EntityManager);
         services.AddSingleton(Bridge.ClientManager);
+        services.AddSingleton(Bridge.LoggerFactory);
         services.AddSingleton(sharedSystem);
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddSingleton(sharedSystem.GetLoggerFactory());
         services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
         
         services.AddManagers();
