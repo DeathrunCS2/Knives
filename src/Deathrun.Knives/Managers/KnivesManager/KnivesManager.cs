@@ -18,7 +18,6 @@ using Sharp.Shared.Managers;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Dapper;
-using DeathrunManager.Shared.Enums;
 
 namespace Deathrun.Knives.Managers.KnivesManager;
 
@@ -221,17 +220,19 @@ internal class KnivesManager(
         {
             if (client?.IsValid is not true) return;
             
-            var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
-            if (deathrunPlayer is null) return;
+            var localClient = client;
             
             Task.Run(async () =>
             {
-                var savedKnifeIdentifier = await GetSavedKnife(deathrunPlayer.Client.SteamId);
+                var savedKnifeIdentifier = await GetSavedKnife(localClient.SteamId);
                 var newKnife = Config.Knives.First(knife => knife.Identifier.Equals(savedKnifeIdentifier, StringComparison.OrdinalIgnoreCase));
                 
+                var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(localClient);
+                if (deathrunPlayer is null) return;
+
                 deathrunPlayer.SelectKnife(newKnife);
             });
-        } ,4f);
+        } ,5f);
     }
     
     public void OnClientDisconnecting(IGameClient client, NetworkDisconnectionReason reason)
