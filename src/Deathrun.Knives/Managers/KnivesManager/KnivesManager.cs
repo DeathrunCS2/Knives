@@ -219,6 +219,8 @@ internal class KnivesManager(
         //try getting saved knife from the database
         modSharp.PushTimer(() =>
         {
+            if (client?.IsValid is not true) return;
+            
             var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
             if (deathrunPlayer is null) return;
             
