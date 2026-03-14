@@ -99,8 +99,9 @@ public static class DeathrunPlayerExtensions
         }
     }
     
-    public static Knife? GetKnife(this IDeathrunPlayer deathrunPlayer)
-        => KnivesManager.DeathrunPlayersKnives.GetValueOrDefault(deathrunPlayer.Client.SteamId);
+    public static Knife GetKnife(this IDeathrunPlayer deathrunPlayer)
+        => KnivesManager.DeathrunPlayersKnives
+                            .GetValueOrDefault(deathrunPlayer.Client.SteamId, KnivesManager.Config.Knives[0]);
     
     public static void ResetKnifeAbilityStates(this IDeathrunPlayer deathrunPlayer)
     {

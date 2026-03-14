@@ -41,6 +41,7 @@ internal class KnivesManager(
     {
         LoadKnivesConfig();
         
+        modSharp.InstallGameFrameHook(null, OnGameFramePost);
         hookManager.PlayerSwitchWeapon.InstallForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.InstallForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
@@ -69,6 +70,7 @@ internal class KnivesManager(
 
     public void Shutdown()
     {
+        modSharp.RemoveGameFrameHook(null, OnGameFramePost);
         hookManager.PlayerSwitchWeapon.RemoveForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.RemoveForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
@@ -85,6 +87,35 @@ internal class KnivesManager(
     #endregion
 
     #region Hooks
+    
+    private readonly List<IDeathrunPlayer> _deathrunPlayersBuffer = new(64);
+
+    private void OnGameFramePost(bool simulating, bool bFirstTick, bool bLastTick)
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+
+        deathrunManagerApi.Managers.PlayersManager.GetAllValidDeathrunPlayersZAlloc(_deathrunPlayersBuffer);
+
+        foreach (var deathrunPlayer in _deathrunPlayersBuffer)
+        {
+            if (deathrunPlayer.PlayerPawn?.IsAlive is true)
+            {
+                deathrunPlayer.SetCenterMenuTopRowHtml
+                (
+                    $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+                    + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.GetKnife().Name}</font>"    
+                );
+            }
+            else
+            {
+                deathrunPlayer.SetCenterMenuTopRowHtml
+                (
+                    $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+                    + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Name}</font>"    
+                );
+            }
+        }
+    }
     
     private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
     {
@@ -137,33 +168,24 @@ internal class KnivesManager(
     {
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
         
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
-        if (deathrunPlayer?.IsValid is not true) return;
-        
-        var deathrunPlayerKnife = deathrunPlayer.GetKnife();
-        if (deathrunPlayerKnife is null) return;
-        
-        deathrunPlayer.SetCenterMenuTopRowHtml
-        (
-            $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-            + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayerKnife.Name}</font>"    
-        );
-        
         //limit to every 6 seconds
         if (_globalVars?.TickCount % 384 is not 0) return;
         
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        if (deathrunPlayer?.IsValid is not true || deathrunPlayer.PlayerPawn is null) return;
+        
         //skip if the player's knife is not the default type
-        if (deathrunPlayerKnife.Identifier.Equals("default") is not true) return;
+        if (deathrunPlayer.GetKnife().Identifier.Equals("default") is not true) return;
             
         //skip invalid/dead players
-        if (deathrunPlayer.IsValidAndAlive is not true || deathrunPlayer.PlayerPawn is null) return;
+        if (deathrunPlayer.IsValidAndAlive is not true) return;
         
         if (deathrunPlayer.PlayerPawn.Health >= 100) return;
         
         var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
         if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
 
-        deathrunPlayer.PlayerPawn.Health += (int) (deathrunPlayerKnife.Value);
+        deathrunPlayer.PlayerPawn.Health += (int) deathrunPlayer.GetKnife().Value;
         
         //clamp health to 100
         if (deathrunPlayer.PlayerPawn.Health > 100) deathrunPlayer.PlayerPawn.Health = 100;
