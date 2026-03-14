@@ -1,1 +1,1 @@
-## Knives extension for [Deathrun Manager](https://github.com/CS2-ModSharp-Deathrun-Mod/Manager)
+## Knives extension for [Deathrun Manager](https://github.com/aquevadis/ms-cs2deathrun-public)
