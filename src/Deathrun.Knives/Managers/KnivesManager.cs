@@ -223,8 +223,13 @@ internal class KnivesManager(
         
         modSharp.PushTimer(() =>
         {
-            DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives {DEFAULT}in the chat!");
+            DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives {DEFAULT}in the chat or via pressing {GREEN}Z{DEFAULT}!");
         }, Random.Shared.Next(25), GameTimerFlags.StopOnMapEnd);
+        
+        modSharp.PushTimer(() =>
+        {
+            DeathrunPlayerExtensions.SendColoredAllChatMessage("Press {GREEN}Z{DEFAULT} to select a knife!");
+        }, Random.Shared.Next(15), GameTimerFlags.StopOnMapEnd);
         
         _addCommandAnnouncers = true;
     }
