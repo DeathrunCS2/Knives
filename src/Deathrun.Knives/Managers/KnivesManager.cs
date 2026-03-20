@@ -33,8 +33,6 @@ internal class KnivesManager(
 
     public static readonly ConcurrentDictionary<ulong, Knife> DeathrunPlayersKnives = [];
     
-    private bool _addCommandAnnouncers = false;
-    
     #region IModule
     
     public bool Init()
@@ -217,28 +215,6 @@ internal class KnivesManager(
     //game listeners
     public void OnServerInit() => _globalVars = modSharp.GetGlobals();
     
-    public void OnGameActivate()
-    {
-        if (_addCommandAnnouncers is true) return;
-        
-        modSharp.PushTimer(() =>
-        {
-            DeathrunPlayerExtensions.SendColoredAllChatMessage("You can select a knife by typing {GREEN}/knife {DEFAULT}or {GREEN}/knives {DEFAULT}in the chat or via pressing {GREEN}Z{DEFAULT}!");
-        }, Random.Shared.Next(25), GameTimerFlags.StopOnMapEnd);
-        
-        modSharp.PushTimer(() =>
-        {
-            DeathrunPlayerExtensions.SendColoredAllChatMessage("Press {GREEN}Z{DEFAULT} to select a knife!");
-        }, Random.Shared.Next(15), GameTimerFlags.StopOnMapEnd);
-        
-        _addCommandAnnouncers = true;
-    }
-
-    public void OnGameDeactivate()
-    {
-        _addCommandAnnouncers = false;
-    }
-
     //client listeners
     public void OnClientConnected(IGameClient client)
     {
