@@ -21,12 +21,12 @@ public class Knives : IModSharpModule
     private readonly ServiceProvider  _serviceProvider;
     
 #pragma warning disable CA2211
-    public static IModSharpModuleInterface<IDeathrunManager>?  DeathrunManagerApi;
-    public static string ModulePath                 = "";
+    public static IDeathrunManager DeathrunManagerApi      = null!;
+    public static InterfaceBridge Bridge                   = null!;
+    public static string ModulePath                        = "";
 #pragma warning restore CA2211
     
-    public static InterfaceBridge Bridge            = null!;
-    private static ILogger<Knives> _logger          = null!;
+    private static ILogger<Knives> _logger                 = null!;
     
     public Knives(ISharedSystem sharedSystem,
         string                   dllPath,
@@ -84,14 +84,11 @@ public class Knives : IModSharpModule
     public void OnAllModulesLoaded()
     {
         DeathrunManagerApi 
-            = Bridge.SharpModuleManager.GetOptionalSharpModuleInterface<IDeathrunManager>(IDeathrunManager.Identity);
+            = Bridge
+                .SharpModuleManager
+                .GetOptionalSharpModuleInterface<IDeathrunManager>(IDeathrunManager.Identity)?
+                .Instance ?? throw new Exception("Failed to capture Deathrun Manager Api!");
         
-        if (DeathrunManagerApi?.Instance is not { } deathrunManagerApi)
-        {
-            _logger.LogError("Failed to capture Deathrun Manager Api!");
-            return;
-        }
-
         CallOnAllSharpModulesLoaded<IManager>();
     }
 

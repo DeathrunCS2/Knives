@@ -18,6 +18,7 @@ using Sharp.Shared.Managers;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Dapper;
+using DeathrunManager.Shared;
 
 namespace Deathrun.Knives.Managers;
 
@@ -67,11 +68,9 @@ internal class KnivesManager(
 
     public void OnAllSharpModulesLoaded()
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-
-        deathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost += OnDeathrunPlayerThinkPost;
-        deathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
-        deathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost += OnDeathrunPlayerThinkPost;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
     }
     
     public void Shutdown()
@@ -88,11 +87,9 @@ internal class KnivesManager(
         clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
         clientManager.RemoveCommandCallback("knives", OnClientKnivesCommand);
         
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-
-        deathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost -= OnDeathrunPlayerThinkPost;
-        deathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
-        deathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost -= OnDeathrunPlayerThinkPost;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
     }
 
     #endregion
@@ -146,27 +143,23 @@ internal class KnivesManager(
     
     #region Hooks
     
-    private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
+    private void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
         var equippedWeapon = parms.Weapon;
         if (equippedWeapon?.IsValidEntity is not true) return;
         
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
 
         UpdateKnifeAbilityState(deathrunPlayer, equippedWeapon);
     }
     
-    private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
+    private void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
         var switchedToWeapon = parms.Weapon;
         if (switchedToWeapon?.IsValidEntity is not true) return;
         
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
 
         UpdateKnifeAbilityState(deathrunPlayer, switchedToWeapon);
@@ -174,11 +167,9 @@ internal class KnivesManager(
     
     private HookReturnValue<long> PlayerDispatchTraceAttackPre(IPlayerDispatchTraceAttackHookParams parms, HookReturnValue<long> result)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return default;
-
         var attackerSteamId64 = entityManager.FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.SteamId;
         
-        var attackerDeathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(attackerSteamId64 ?? 999);
+        var attackerDeathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(attackerSteamId64 ?? 999);
         if (attackerDeathrunPlayer is null) return default;
         
         var activeWeapon = attackerDeathrunPlayer.PlayerPawn?.GetActiveWeapon();
@@ -193,14 +184,12 @@ internal class KnivesManager(
         return default;
     }
 
-    private static void PlayerPostThink(IPlayerThinkForwardParams parms)
+    private void PlayerPostThink(IPlayerThinkForwardParams parms)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
         //limit to every 6 seconds
         if (_globalVars?.TickCount % 384 is not 0) return;
         
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer?.IsValid is not true || deathrunPlayer.PlayerPawn is null) return;
         
         //skip if the player's knife is not the default type
@@ -220,11 +209,9 @@ internal class KnivesManager(
         if (deathrunPlayer.PlayerPawn.Health > 100) deathrunPlayer.PlayerPawn.Health = 100;
     }
     
-    private static HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
+    private HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return default;
-        
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         
         var activeWeapon = deathrunPlayer?.PlayerPawn?.GetActiveWeapon();
         if (activeWeapon?.IsValidEntity is not true 
@@ -275,11 +262,9 @@ internal class KnivesManager(
     
     #region Commands
     
-    private static ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
+    private ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return ECommandAction.Stopped;
-        
-        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
+        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
         if (deathrunPlayer is null) return ECommandAction.Stopped;
 
         if (command.ArgCount is 0)
