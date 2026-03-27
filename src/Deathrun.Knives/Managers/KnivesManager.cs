@@ -39,7 +39,6 @@ internal class KnivesManager(
     {
         LoadKnivesConfig();
         
-        modSharp.InstallGameFrameHook(null, OnGameFramePost);
         hookManager.PlayerSwitchWeapon.InstallForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.InstallForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
@@ -66,9 +65,17 @@ internal class KnivesManager(
 
     public static void OnPostInit() { }
 
+    public void OnAllSharpModulesLoaded()
+    {
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+
+        deathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost += OnDeathrunPlayerThinkPost;
+        deathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
+        deathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
+    }
+    
     public void Shutdown()
     {
-        modSharp.RemoveGameFrameHook(null, OnGameFramePost);
         hookManager.PlayerSwitchWeapon.RemoveForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.RemoveForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
@@ -80,40 +87,62 @@ internal class KnivesManager(
         
         clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
         clientManager.RemoveCommandCallback("knives", OnClientKnivesCommand);
+        
+        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
+
+        deathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost -= OnDeathrunPlayerThinkPost;
     }
 
     #endregion
 
-    #region Hooks
+    #region Api listeners
     
-    private readonly List<IDeathrunPlayer> _deathrunPlayersBuffer = new(64);
-
-    private void OnGameFramePost(bool simulating, bool bFirstTick, bool bLastTick)
+    private static void OnDeathrunPlayerCreated(IDeathrunPlayer deathrunPlayer)
     {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-
-        deathrunManagerApi.Managers.PlayersManager.GetAllValidDeathrunPlayersZAlloc(_deathrunPlayersBuffer);
-
-        foreach (var deathrunPlayer in _deathrunPlayersBuffer)
+        Task.Run(async () =>
         {
-            if (deathrunPlayer.PlayerPawn?.IsAlive is true)
+            ulong steamId64 = deathrunPlayer.Client.SteamId;
+            var savedKnifeIdentifier = await GetSavedKnife(steamId64);
+            SetKnife(steamId64, savedKnifeIdentifier);
+        });
+    }
+    
+    private static void OnDeathrunPlayerRemoved(IDeathrunPlayer deathrunPlayer)
+    {
+        ulong steamId64 = deathrunPlayer.Client.SteamId;
+        
+        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is true)
+        {
+            Task.Run(async () => 
             {
-                deathrunPlayer.SetCenterMenuTopRowHtml
-                (
-                    $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-                    + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.GetKnife().Name}</font>"    
-                );
-            }
-            else
-            {
-                deathrunPlayer.SetCenterMenuTopRowHtml
-                (
-                    $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-                    + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Name}</font>"    
-                );
-            }
+                await SaveSelectedKnifeToDatabase(steamId64, removedPlayerAndKnife.Identifier);
+            });
         }
     }
+    
+    private static void OnDeathrunPlayerThinkPost(IDeathrunPlayer deathrunPlayer)
+    {
+        if (deathrunPlayer.PlayerPawn?.IsAlive is true)
+        {
+            deathrunPlayer.SetCenterMenuTopRowHtml
+            (
+                $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.GetKnife().Name}</font>"    
+            );
+        }
+        else
+        {
+            deathrunPlayer.SetCenterMenuTopRowHtml
+            (
+                $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Name}</font>"    
+            );
+        }
+    }
+    
+    #endregion
+    
+    #region Hooks
     
     private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
     {
@@ -214,42 +243,6 @@ internal class KnivesManager(
     
     //game listeners
     public void OnServerInit() => _globalVars = modSharp.GetGlobals();
-    
-    //client listeners
-    public void OnClientConnected(IGameClient client)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
-        if (Config.SaveKnivesToDatabase is not true || client.SteamId == 0) return;
-        
-        ulong steamId64 = client.SteamId;
-
-        modSharp.PushTimer(() =>
-        {
-            Task.Run(async () =>
-            {
-                var savedKnifeIdentifier = await GetSavedKnife(steamId64);
-                SetKnife(steamId64, savedKnifeIdentifier);
-            });
-        } ,6f);
-    }
-    
-    public void OnClientDisconnecting(IGameClient client, NetworkDisconnectionReason reason)
-    {
-        if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
-        
-        if (Config.SaveKnivesToDatabase is not true || client.SteamId == 0) return;
-        
-        ulong steamId64 = client.SteamId;
-        
-        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is true)
-        {
-            Task.Run(async () => 
-            {
-                await SaveSelectedKnifeToDatabase(steamId64, removedPlayerAndKnife.Identifier);
-            });
-        }
-    }
     
     #endregion
     
