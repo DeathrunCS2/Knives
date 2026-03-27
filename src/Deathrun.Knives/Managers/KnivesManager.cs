@@ -91,6 +91,8 @@ internal class KnivesManager(
         if (Knives.DeathrunManagerApi?.Instance is not { } deathrunManagerApi) return;
 
         deathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost -= OnDeathrunPlayerThinkPost;
+        deathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
+        deathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
     }
 
     #endregion
