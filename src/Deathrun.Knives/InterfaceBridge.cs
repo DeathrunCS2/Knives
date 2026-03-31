@@ -20,6 +20,7 @@ public class InterfaceBridge
     public Version              Version            { get; }
     public FileVersionInfo      FileVersion        { get; }
     public DateTime             FileTime           { get; }
+    public int                  BuildNumber        { get; }
     public IEventManager        EventManager       { get; }
     public IEntityManager       EntityManager      { get; }
     public IClientManager       ClientManager      { get; }
@@ -64,6 +65,7 @@ public class InterfaceBridge
         SharpModuleManager = sharedSystem.GetSharpModuleManager();
         FileVersion        = FileVersionInfo.GetVersionInfo(Path.Combine(dllPath, "Deathrun.Knives.dll"));
         FileTime           = GetSelfDBuildTime(dllPath);
+        BuildNumber        = GetBuildNumber();
 
         Directory.CreateDirectory(DataPath);
         Directory.CreateDirectory(ConfigPath);
@@ -126,5 +128,16 @@ public class InterfaceBridge
 
             return File.GetLastWriteTime(Path.Combine(dllPath, "StarDance.dll"));
         }
+    }
+    
+    private static int GetBuildNumber()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        foreach (var attr in assembly.GetCustomAttributes<AssemblyMetadataAttribute>())
+        {
+            if (attr.Key.Equals("BuildNumber", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(attr.Value))
+                return int.TryParse(attr.Value, out var buildNumber) ? buildNumber : 0;
+        }
+        return 0;
     }
 }
