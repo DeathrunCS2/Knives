@@ -23,7 +23,6 @@ public class Knives : IModSharpModule
 #pragma warning disable CA2211
     public static IDeathrunManager DeathrunManagerApi      = null!;
     public static InterfaceBridge Bridge                   = null!;
-    public static string ModulePath                        = "";
 #pragma warning restore CA2211
     
     private static ILogger<Knives> _logger                 = null!;
@@ -35,7 +34,6 @@ public class Knives : IModSharpModule
         IConfiguration           coreConfiguration,
         bool                     hotReload)
     {
-        ModulePath = dllPath;
         Bridge = new InterfaceBridge(dllPath, sharpPath, version, sharedSystem);
         _logger = sharedSystem.GetLoggerFactory().CreateLogger<Knives>();
         
