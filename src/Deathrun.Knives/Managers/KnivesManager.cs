@@ -18,7 +18,6 @@ using Sharp.Shared.Managers;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Dapper;
-using DeathrunManager.Shared;
 
 namespace Deathrun.Knives.Managers;
 
@@ -26,7 +25,7 @@ internal class KnivesManager(
     IModSharp modSharp,
     IEntityManager entityManager,
     IHookManager hookManager,
-    IClientManager clientManager) : IKnivesManager, IGameListener, IClientListener
+    IClientManager clientManager) : IKnivesManager, IGameListener
 {
     private static IGlobalVars? _globalVars = null;
     public static KnivesConfig Config = null!;
@@ -43,10 +42,8 @@ internal class KnivesManager(
         hookManager.PlayerSwitchWeapon.InstallForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.InstallForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
-        hookManager.PlayerPostThink.InstallForward(PlayerPostThink);
         hookManager.PlayerGetMaxSpeed.InstallHookPre(PlayerGetMaxSpeedPre);
         
-        clientManager.InstallClientListener(this);
         modSharp.InstallGameListener(this);
         
         clientManager.InstallCommandCallback("knife", OnClientKnivesCommand);
@@ -78,10 +75,8 @@ internal class KnivesManager(
         hookManager.PlayerSwitchWeapon.RemoveForward(PlayerSwitchWeapon);
         hookManager.PlayerEquipWeapon.RemoveForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
-        hookManager.PlayerPostThink.RemoveForward(PlayerPostThink);
         hookManager.PlayerGetMaxSpeed.RemoveHookPre(PlayerGetMaxSpeedPre);
         
-        clientManager.RemoveClientListener(this);
         modSharp.RemoveGameListener(this);
         
         clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
@@ -137,13 +132,33 @@ internal class KnivesManager(
                 + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Name}</font>"    
             );
         }
+        
+        if (_globalVars?.TickCount % 384 is not 0) return;
+        
+        if (deathrunPlayer?.IsValid is not true || deathrunPlayer.PlayerPawn is null) return;
+        
+        //skip if the player's knife is not the default type
+        if (deathrunPlayer.GetKnife().Identifier.Equals("default") is not true) return;
+            
+        //skip invalid/dead players
+        if (deathrunPlayer.IsValidAndAlive is not true) return;
+        
+        if (deathrunPlayer.PlayerPawn.Health >= 100) return;
+        
+        var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
+        if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
+
+        deathrunPlayer.PlayerPawn.Health += (int) deathrunPlayer.GetKnife().Value;
+        
+        //clamp health to 100
+        if (deathrunPlayer.PlayerPawn.Health > 100) deathrunPlayer.PlayerPawn.Health = 100;
     }
     
     #endregion
     
     #region Hooks
     
-    private void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
+    private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
     {
         var equippedWeapon = parms.Weapon;
         if (equippedWeapon?.IsValidEntity is not true) return;
@@ -154,7 +169,7 @@ internal class KnivesManager(
         UpdateKnifeAbilityState(deathrunPlayer, equippedWeapon);
     }
     
-    private void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
+    private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
     {
         var switchedToWeapon = parms.Weapon;
         if (switchedToWeapon?.IsValidEntity is not true) return;
@@ -183,33 +198,8 @@ internal class KnivesManager(
         
         return default;
     }
-
-    private void PlayerPostThink(IPlayerThinkForwardParams parms)
-    {
-        //limit to every 6 seconds
-        if (_globalVars?.TickCount % 384 is not 0) return;
-        
-        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
-        if (deathrunPlayer?.IsValid is not true || deathrunPlayer.PlayerPawn is null) return;
-        
-        //skip if the player's knife is not the default type
-        if (deathrunPlayer.GetKnife().Identifier.Equals("default") is not true) return;
-            
-        //skip invalid/dead players
-        if (deathrunPlayer.IsValidAndAlive is not true) return;
-        
-        if (deathrunPlayer.PlayerPawn.Health >= 100) return;
-        
-        var activeWeapon = deathrunPlayer.PlayerPawn.GetActiveWeapon();
-        if (activeWeapon?.IsValidEntity is not true || activeWeapon.Classname.Contains("knife") is not true) return;
-
-        deathrunPlayer.PlayerPawn.Health += (int) deathrunPlayer.GetKnife().Value;
-        
-        //clamp health to 100
-        if (deathrunPlayer.PlayerPawn.Health > 100) deathrunPlayer.PlayerPawn.Health = 100;
-    }
     
-    private HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
+    private static HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
     {
         var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         
@@ -262,7 +252,7 @@ internal class KnivesManager(
     
     #region Commands
     
-    private ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
+    private static ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
     {
         var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
         if (deathrunPlayer is null) return ECommandAction.Stopped;
@@ -319,10 +309,10 @@ internal class KnivesManager(
     
     private static void LoadKnivesConfig()
     {
-        if (!Directory.Exists(Knives.ModulePath + "/configs")) 
-            Directory.CreateDirectory(Knives.ModulePath + "/configs");
+        if (!Directory.Exists(Knives.Bridge.ConfigPath + "/Deathrun.Manager/modules/Knives")) 
+            Directory.CreateDirectory(Knives.Bridge.ConfigPath + "/Deathrun.Manager/modules/Knives");
         
-        var configPath = Path.Combine(Knives.ModulePath, "configs/knives.json");
+        var configPath = Path.Combine(Knives.Bridge.ConfigPath, "Deathrun.Manager/modules/Knives/knives.json");
         if (!File.Exists(configPath)) CreateKnivesConfig(configPath);
 
         var config = JsonSerializer.Deserialize<KnivesConfig>(File.ReadAllText(configPath))!;
@@ -481,8 +471,6 @@ internal class KnivesManager(
     
     int IGameListener.ListenerVersion => IGameListener.ApiVersion;
     int IGameListener.ListenerPriority => 7;
-    int IClientListener.ListenerVersion => IClientListener.ApiVersion;
-    int IClientListener.ListenerPriority => 7;
 }
 
 public class KnivesConfig
