@@ -65,7 +65,7 @@ internal class KnivesManager(
 
     public void OnAllSharpModulesLoaded()
     {
-        Knives.DeathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost += OnDeathrunPlayerThinkPost;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.ThinkPost += OnDeathrunPlayerThinkPost;
         Knives.DeathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
         Knives.DeathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
     }
@@ -82,7 +82,7 @@ internal class KnivesManager(
         clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
         clientManager.RemoveCommandCallback("knives", OnClientKnivesCommand);
         
-        Knives.DeathrunManagerApi.Managers.PlayersManager.DeathrunPlayerThinkPost -= OnDeathrunPlayerThinkPost;
+        Knives.DeathrunManagerApi.Managers.PlayersManager.ThinkPost -= OnDeathrunPlayerThinkPost;
         Knives.DeathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
         Knives.DeathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
     }
