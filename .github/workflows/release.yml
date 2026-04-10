@@ -4,7 +4,7 @@ env:
   APP_NAME: "Deathrun.Knives"
   BASE_MODULE_PROJECT_PATH: "src/Deathrun.Knives/Deathrun.Knives.csproj"
   
-  BASE_MODULE_OUTPUT_PATH: "game/sharp/modules/Deathrun.Knives"
+  BASE_MODULE_OUTPUT_PATH: "game/sharp/modules/Deathrun.Manager/modules/Deathrun.Knives"
   
   DOTNET_VERSION: '10.0.x'  # .NET 10.0
   CONFIGURATION: Release
@@ -75,7 +75,7 @@ jobs:
         with:
           name: Deathrun.Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}
           path: |
-            game/sharp/modules/Deathrun.Knives/
+            game/sharp/modules/Deathrun.Manager/modules/Deathrun.Knives
 
        # Create GitHub Release
       - name: Create GitHub Release

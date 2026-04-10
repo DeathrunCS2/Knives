@@ -9,7 +9,7 @@
         <RootNamespace>Deathrun.Knives</RootNamespace>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <PlatformTarget>x64</PlatformTarget>
-        <Version>0.0.10</Version>
+        <Version>0.0.11</Version>
     </PropertyGroup> 
     
     <PropertyGroup>
@@ -29,7 +29,7 @@
     
     <ItemGroup>
       <PackageReference Include="Dapper" Version="2.1.72" />
-      <PackageReference Include="DeathrunManager.Shared" Version="0.1.25" />
+      <PackageReference Include="DeathrunManager.Shared" Version="0.1.33" />
       <PackageReference Include="MySqlConnector" Version="2.5.0" />
     </ItemGroup>
     
@@ -42,7 +42,7 @@
 
         <Copy
                 SourceFiles="@(CompiledFiles)"
-                DestinationFolder="..\..\.sharp\modules\Deathrun.Knives" />
+                DestinationFolder="..\..\.sharp\modules\Deathrun.Manager\modules\Deathrun.Knives" />
     </Target>
     
 

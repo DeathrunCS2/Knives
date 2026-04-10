@@ -4,6 +4,7 @@ using Deathrun.Knives.Managers;
 using Deathrun.Knives.Interfaces;
 using Deathrun.Knives.Interfaces.Managers;
 using DeathrunManager.Shared;
+using DeathrunManager.Shared.Objects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,44 +14,33 @@ using Sharp.Shared.Abstractions;
 
 namespace Deathrun.Knives;
 
-public class Knives : IModSharpModule
+public class Knives : IDeathrunModule
 {
-    public string DisplayName         => $"[Deathrun][Module] Knives - Build #{Bridge.BuildNumber} - Last Build Time: {Bridge.FileTime}";
-    public string DisplayAuthor       => "AquaVadis";
+    public string Name         => $"Knives Extension";
+    public string Author       => "AquaVadis";
     
     private readonly ServiceProvider  _serviceProvider;
     
 #pragma warning disable CA2211
-    public static IDeathrunManager DeathrunManagerApi      = null!;
-    public static InterfaceBridge Bridge                   = null!;
+    public IDeathrunManager DeathrunManagerApi { get; } = null!;
 #pragma warning restore CA2211
     
     private static ILogger<Knives> _logger                 = null!;
     
-    public Knives(ISharedSystem sharedSystem,
-        string                   dllPath,
-        string                   sharpPath,
-        Version                  version,
-        IConfiguration           coreConfiguration,
-        bool                     hotReload)
+    public Knives(ISharedSystem sharedSystem, IDeathrunManager deathrunManagerApi)
     {
-        Bridge = new InterfaceBridge(dllPath, sharpPath, version, sharedSystem);
         _logger = sharedSystem.GetLoggerFactory().CreateLogger<Knives>();
         
-        var configuration = new ConfigurationBuilder()
-                                .AddJsonFile(Path.Combine(dllPath, "base.json"), true, false)
-                                .Build();
-        
         var services = new ServiceCollection();
-
-        services.AddSingleton(Bridge);
-        services.AddSingleton(Bridge.ModSharp);
-        services.AddSingleton(Bridge.HookManager);
-        services.AddSingleton(Bridge.EntityManager);
-        services.AddSingleton(Bridge.ClientManager);
-        services.AddSingleton(Bridge.LoggerFactory);
+        
+        services.AddSingleton(deathrunManagerApi);
         services.AddSingleton(sharedSystem);
-        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(sharedSystem.GetModSharp());
+        services.AddSingleton(sharedSystem.GetHookManager());
+        services.AddSingleton(sharedSystem.GetEntityManager());
+        services.AddSingleton(sharedSystem.GetClientManager());
+        services.AddSingleton(sharedSystem.GetLoggerFactory());
+        services.AddSingleton(sharedSystem);
         services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
         
         services.AddManagers();
@@ -81,18 +71,11 @@ public class Knives : IModSharpModule
 
     public void OnAllModulesLoaded()
     {
-        DeathrunManagerApi 
-            = Bridge
-                .SharpModuleManager
-                .GetOptionalSharpModuleInterface<IDeathrunManager>(IDeathrunManager.Identity)?
-                .Instance ?? throw new Exception("Failed to capture Deathrun Manager Api!");
         
         CallOnAllSharpModulesLoaded<IManager>();
     }
-
-    public void OnLibraryConnected(string name) { }
-
-    public void OnLibraryDisconnect(string name) { }
+    
+    public bool Reload(IServiceProvider serviceProvider) { return true; }
     
     #endregion
     

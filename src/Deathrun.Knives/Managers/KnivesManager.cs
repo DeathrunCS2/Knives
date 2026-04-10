@@ -18,6 +18,7 @@ using Sharp.Shared.Managers;
 using Sharp.Shared.Objects;
 using Sharp.Shared.Types;
 using Dapper;
+using DeathrunManager.Shared;
 
 namespace Deathrun.Knives.Managers;
 
@@ -25,9 +26,9 @@ internal class KnivesManager(
     IModSharp modSharp,
     IEntityManager entityManager,
     IHookManager hookManager,
-    IClientManager clientManager) : IKnivesManager, IGameListener
+    IClientManager clientManager,
+    IDeathrunManager deathrunManagerApi) : IKnivesManager
 {
-    private static IGlobalVars? _globalVars = null;
     public static KnivesConfig Config = null!;
     private static string ConnectionString { get; set; } = "";
 
@@ -43,8 +44,6 @@ internal class KnivesManager(
         hookManager.PlayerEquipWeapon.InstallForward(PlayerEquipWeapon);
         hookManager.PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
         hookManager.PlayerGetMaxSpeed.InstallHookPre(PlayerGetMaxSpeedPre);
-        
-        modSharp.InstallGameListener(this);
         
         clientManager.InstallCommandCallback("knife", OnClientKnivesCommand);
         clientManager.InstallCommandCallback("knives", OnClientKnivesCommand);
@@ -65,9 +64,9 @@ internal class KnivesManager(
 
     public void OnAllSharpModulesLoaded()
     {
-        Knives.DeathrunManagerApi.Managers.PlayersManager.ThinkPost += OnDeathrunPlayerThinkPost;
-        Knives.DeathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
-        Knives.DeathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
+        deathrunManagerApi.Managers.PlayersManager.ThinkPost += OnDeathrunPlayerThinkPost;
+        deathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
+        deathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
     }
     
     public void Shutdown()
@@ -77,14 +76,12 @@ internal class KnivesManager(
         hookManager.PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
         hookManager.PlayerGetMaxSpeed.RemoveHookPre(PlayerGetMaxSpeedPre);
         
-        modSharp.RemoveGameListener(this);
-        
         clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
         clientManager.RemoveCommandCallback("knives", OnClientKnivesCommand);
         
-        Knives.DeathrunManagerApi.Managers.PlayersManager.ThinkPost -= OnDeathrunPlayerThinkPost;
-        Knives.DeathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
-        Knives.DeathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
+        deathrunManagerApi.Managers.PlayersManager.ThinkPost -= OnDeathrunPlayerThinkPost;
+        deathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
+        deathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
     }
 
     #endregion
@@ -114,7 +111,7 @@ internal class KnivesManager(
         }
     }
     
-    private static void OnDeathrunPlayerThinkPost(IDeathrunPlayer deathrunPlayer)
+    private void OnDeathrunPlayerThinkPost(IDeathrunPlayer deathrunPlayer)
     {
         if (deathrunPlayer.PlayerPawn?.IsAlive is true)
         {
@@ -133,7 +130,7 @@ internal class KnivesManager(
             );
         }
         
-        if (_globalVars?.TickCount % 384 is not 0) return;
+        if (modSharp.GetGlobals().TickCount % 384 is not 0) return;
         
         if (deathrunPlayer?.IsValid is not true || deathrunPlayer.PlayerPawn is null) return;
         
@@ -158,23 +155,23 @@ internal class KnivesManager(
     
     #region Hooks
     
-    private static void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
+    private void PlayerEquipWeapon(IPlayerEquipWeaponForwardParams parms)
     {
         var equippedWeapon = parms.Weapon;
         if (equippedWeapon?.IsValidEntity is not true) return;
         
-        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
 
         UpdateKnifeAbilityState(deathrunPlayer, equippedWeapon);
     }
     
-    private static void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
+    private void PlayerSwitchWeapon(IPlayerSwitchWeaponForwardParams parms)
     {
         var switchedToWeapon = parms.Weapon;
         if (switchedToWeapon?.IsValidEntity is not true) return;
         
-        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         if (deathrunPlayer is null) return;
 
         UpdateKnifeAbilityState(deathrunPlayer, switchedToWeapon);
@@ -184,7 +181,7 @@ internal class KnivesManager(
     {
         var attackerSteamId64 = entityManager.FindEntityByHandle(parms.AttackerPawnHandle)?.GetController()?.SteamId;
         
-        var attackerDeathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(attackerSteamId64 ?? 999);
+        var attackerDeathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(attackerSteamId64 ?? 999);
         if (attackerDeathrunPlayer is null) return default;
         
         var activeWeapon = attackerDeathrunPlayer.PlayerPawn?.GetActiveWeapon();
@@ -199,9 +196,9 @@ internal class KnivesManager(
         return default;
     }
     
-    private static HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
+    private HookReturnValue<float> PlayerGetMaxSpeedPre(IPlayerGetMaxSpeedHookParams parms, HookReturnValue<float> original)
     {
-        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(parms.Client);
         
         var activeWeapon = deathrunPlayer?.PlayerPawn?.GetActiveWeapon();
         if (activeWeapon?.IsValidEntity is not true 
@@ -216,13 +213,6 @@ internal class KnivesManager(
         };
     }
 
-    #endregion
-    
-    #region Listeners
-    
-    //game listeners
-    public void OnServerInit() => _globalVars = modSharp.GetGlobals();
-    
     #endregion
     
     #region State update method/s
@@ -252,9 +242,9 @@ internal class KnivesManager(
     
     #region Commands
     
-    private static ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
+    private ECommandAction OnClientKnivesCommand(IGameClient client, StringCommand command)
     {
-        var deathrunPlayer = Knives.DeathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
+        var deathrunPlayer = deathrunManagerApi.Managers.PlayersManager.GetDeathrunPlayer(client);
         if (deathrunPlayer is null) return ECommandAction.Stopped;
 
         if (command.ArgCount is 0)
@@ -307,12 +297,15 @@ internal class KnivesManager(
     
     #region Knives Config
     
-    private static void LoadKnivesConfig()
+    private void LoadKnivesConfig()
     {
-        if (!Directory.Exists(Knives.Bridge.ConfigPath + "/Deathrun.Manager/modules/Knives")) 
-            Directory.CreateDirectory(Knives.Bridge.ConfigPath + "/Deathrun.Manager/modules/Knives");
+        var sharpPath = Path.Combine(modSharp.GetGamePath(), "../sharp");
+        var configPathConstruct = Path.GetFullPath(Path.Combine(sharpPath, "configs"));
         
-        var configPath = Path.Combine(Knives.Bridge.ConfigPath, "Deathrun.Manager/modules/Knives/knives.json");
+        if (!Directory.Exists(configPathConstruct + "/Deathrun.Manager/modules/Knives")) 
+            Directory.CreateDirectory(configPathConstruct + "/Deathrun.Manager/modules/Knives");
+        
+        var configPath = Path.Combine(configPathConstruct, "Deathrun.Manager/modules/Knives/knives.json");
         if (!File.Exists(configPath)) CreateKnivesConfig(configPath);
 
         var config = JsonSerializer.Deserialize<KnivesConfig>(File.ReadAllText(configPath))!;
@@ -326,7 +319,7 @@ internal class KnivesManager(
         File.WriteAllText(configPath, JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true }));
     }
     
-    public static void ReloadKnivesConfig() { LoadKnivesConfig(); }
+    public void ReloadKnivesConfig() { LoadKnivesConfig(); }
 
     #endregion
     
@@ -469,8 +462,6 @@ internal class KnivesManager(
     
     #endregion
     
-    int IGameListener.ListenerVersion => IGameListener.ApiVersion;
-    int IGameListener.ListenerPriority => 7;
 }
 
 public class KnivesConfig
