@@ -1,10 +1,10 @@
 name: Release
 
 env:
-  APP_NAME: "Deathrun.Knives"
-  BASE_MODULE_PROJECT_PATH: "src/Deathrun.Knives/Deathrun.Knives.csproj"
+  APP_NAME: "Knives"
+  BASE_MODULE_PROJECT_PATH: "src/Knives/Knives.csproj"
   
-  BASE_MODULE_OUTPUT_PATH: "game/sharp/modules/Deathrun.Manager/modules/Deathrun.Knives"
+  BASE_MODULE_OUTPUT_PATH: "game/sharp/modules/Deathrun.Manager/modules/Knives"
   
   DOTNET_VERSION: '10.0.x'  # .NET 10.0
   CONFIGURATION: Release
@@ -35,7 +35,7 @@ jobs:
       - name: Get built version
         id: build_version
         run: |
-          VERSION=$(grep -oP '<Version>\K[^<]+' ./src/Deathrun.Knives/Deathrun.Knives.csproj)
+          VERSION=$(grep -oP '<Version>\K[^<]+' ./src/Knives/Knives.csproj)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Build Version: $VERSION"
 
@@ -47,7 +47,7 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
       
-      - name: Publish Deathrun.Knives Module
+      - name: Publish Knives Module
         run: | 
           dotnet publish $BASE_MODULE_PROJECT_PATH --configuration ${{ env.CONFIGURATION }} --no-restore --output $BASE_MODULE_OUTPUT_PATH
           
@@ -65,17 +65,17 @@ jobs:
       - name: Create release archives
         run: |
           cd game
-          tar -czf ../Deathrun.Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.tar.gz sharp/
+          tar -czf ../Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.tar.gz sharp/
           cd ..
-          zip -r Deathrun.Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.zip game/sharp/
+          zip -r Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.zip game/sharp/
       
       # Upload artifacts to workflow
-      - name: Upload Deathrun.Knives artifacts
+      - name: Upload Knives artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Deathrun.Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}
+          name: Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}
           path: |
-            game/sharp/modules/Deathrun.Manager/modules/Deathrun.Knives
+            game/sharp/modules/Deathrun.Manager/modules/Knives
 
        # Create GitHub Release
       - name: Create GitHub Release
@@ -86,8 +86,8 @@ jobs:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('{0}build{1}', steps.build_version.outputs.version, github.run_number) }}
           name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('{0}build{1}', steps.build_version.outputs.version, github.run_number) }}
           files: |
-            Deathrun.Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.tar.gz
-            Deathrun.Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.zip
+            Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.tar.gz
+            Knives${{ steps.build_version.outputs.version }}-build${{ github.run_number }}.zip
           body: |
             ##### Version ${{ steps.build_version.outputs.version }} / Build number - ${{ github.run_number }}
           draft: false

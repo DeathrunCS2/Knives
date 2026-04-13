@@ -45,6 +45,10 @@ internal class KnivesManager(
         hookManager.PlayerDispatchTraceAttack.InstallHookPre(PlayerDispatchTraceAttackPre);
         hookManager.PlayerGetMaxSpeed.InstallHookPre(PlayerGetMaxSpeedPre);
         
+        deathrunManagerApi.Managers.PlayersManager.ThinkPost += OnDeathrunPlayerThinkPost;
+        deathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
+        deathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
+        
         clientManager.InstallCommandCallback("knife", OnClientKnivesCommand);
         clientManager.InstallCommandCallback("knives", OnClientKnivesCommand);
 
@@ -59,15 +63,6 @@ internal class KnivesManager(
         
         return true;
     }
-
-    public static void OnPostInit() { }
-
-    public void OnAllSharpModulesLoaded()
-    {
-        deathrunManagerApi.Managers.PlayersManager.ThinkPost += OnDeathrunPlayerThinkPost;
-        deathrunManagerApi.Managers.PlayersManager.Created += OnDeathrunPlayerCreated;
-        deathrunManagerApi.Managers.PlayersManager.Removed += OnDeathrunPlayerRemoved;
-    }
     
     public void Shutdown()
     {
@@ -76,12 +71,12 @@ internal class KnivesManager(
         hookManager.PlayerDispatchTraceAttack.RemoveHookPre(PlayerDispatchTraceAttackPre);
         hookManager.PlayerGetMaxSpeed.RemoveHookPre(PlayerGetMaxSpeedPre);
         
-        clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
-        clientManager.RemoveCommandCallback("knives", OnClientKnivesCommand);
-        
         deathrunManagerApi.Managers.PlayersManager.ThinkPost -= OnDeathrunPlayerThinkPost;
         deathrunManagerApi.Managers.PlayersManager.Created -= OnDeathrunPlayerCreated;
         deathrunManagerApi.Managers.PlayersManager.Removed -= OnDeathrunPlayerRemoved;
+        
+        clientManager.RemoveCommandCallback("knife", OnClientKnivesCommand);
+        clientManager.RemoveCommandCallback("knives", OnClientKnivesCommand);
     }
 
     #endregion

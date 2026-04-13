@@ -18,64 +18,48 @@ public class Knives : IDeathrunModule
 {
     public string Name         => $"Knives Extension";
     public string Author       => "AquaVadis";
+    public IDeathrunManager DeathrunManager { get; }
     
     private readonly ServiceProvider  _serviceProvider;
     
-#pragma warning disable CA2211
-    public IDeathrunManager DeathrunManagerApi { get; } = null!;
-#pragma warning restore CA2211
-    
-    private static ILogger<Knives> _logger                 = null!;
-    
-    public Knives(ISharedSystem sharedSystem, IDeathrunManager deathrunManagerApi)
+    public Knives(ISharedSystem sharedSystem, IDeathrunManager deathrunManager)
     {
-        _logger = sharedSystem.GetLoggerFactory().CreateLogger<Knives>();
+        DeathrunManager = deathrunManager;
         
         var services = new ServiceCollection();
-        
-        services.AddSingleton(deathrunManagerApi);
+        services.AddSingleton(deathrunManager);
         services.AddSingleton(sharedSystem);
         services.AddSingleton(sharedSystem.GetModSharp());
         services.AddSingleton(sharedSystem.GetHookManager());
         services.AddSingleton(sharedSystem.GetEntityManager());
         services.AddSingleton(sharedSystem.GetClientManager());
         services.AddSingleton(sharedSystem.GetLoggerFactory());
-        services.AddSingleton(sharedSystem);
         services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(Logger<>)));
-        
         services.AddManagers();
+        
         _serviceProvider = services.BuildServiceProvider();
     }
 
     #region IModule
     
-    public bool Init()
+    public bool Init(bool hotReload)
     {
-        _logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Load Deathrun Knives!");
-        
         //load managers
         CallInit<IManager>();
         return true;
     }
 
-    public void PostInit() { CallPostInit<IManager>(); }
+    public void PostInit(bool hotReload) { CallPostInit<IManager>(); }
 
-    public void Shutdown()
+    public void Shutdown(bool hotReload)
     {
         CallShutdown<IManager>();
-
-        _serviceProvider.ShutdownAllSharpExtensions();
-        
-        _logger.LogInformation("[Deathrun.Knives] {colorMessage}", "Unloaded Deathrun Knives!");
     }
 
-    public void OnAllModulesLoaded()
+    public void OnAllModSharpModulesLoaded()
     {
-        
         CallOnAllSharpModulesLoaded<IManager>();
     }
-    
-    public bool Reload(IServiceProvider serviceProvider) { return true; }
     
     #endregion
     
@@ -89,7 +73,7 @@ public class Knives : IDeathrunModule
         {
             if (!service.Init())
             {
-                _logger.LogError("Failed to Init {service}!", service.GetType().FullName);
+                Log(service.GetType().Name, "Failed to Init {service}!");
 
                 return -1;
             }
@@ -110,7 +94,7 @@ public class Knives : IDeathrunModule
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "An error occurred while calling PostInit in {m}", service.GetType().Name);
+                Log(service.GetType().Name, $"An error occurred while calling PostInit | {e}");
             }
         }
     }
@@ -125,7 +109,7 @@ public class Knives : IDeathrunModule
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "An error occurred while calling Shutdown in {m}", service.GetType().Name);
+                Log(service.GetType().Name, $"An error occurred while calling Shutdown | {e}");
             }
         }
     }
@@ -140,10 +124,26 @@ public class Knives : IDeathrunModule
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "An error occurred while calling OnAllSharpModulesLoaded in {m}", service.GetType().Name);
+                
+                Log(service.GetType().Name, $"An error occurred while calling OnAllSharpModulesLoaded | {e}");
             }
         }
     }
 
+    #endregion
+    
+    #region ColoredLog 
+    
+    private static void Log(string header, string message, 
+                            ConsoleColor backgroundColor = ConsoleColor.DarkGray,
+                            ConsoleColor textColor = ConsoleColor.Black)
+    {
+        Console.ForegroundColor = textColor;
+        Console.BackgroundColor = backgroundColor;
+        Console.Write($"{header}:");
+        Console.ResetColor();
+        Console.Write($" {message} \n");
+    }
+    
     #endregion
 }
