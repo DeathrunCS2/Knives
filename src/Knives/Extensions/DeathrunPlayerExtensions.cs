@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Deathrun.Knives.Managers;
-using DeathrunManager.Shared.Objects;
+using DeathrunManager.Shared.DeathrunObjects;
 using Sharp.Shared.Definition;
 using Sharp.Shared.Enums;
 using Sharp.Shared.Types;
