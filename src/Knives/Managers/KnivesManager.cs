@@ -272,7 +272,8 @@ internal class KnivesManager(
         var newKnife = Config.Knives.First(knife => knife.Identifier.Equals(targetKnife, StringComparison.OrdinalIgnoreCase));
 
         deathrunPlayer.SelectKnife(newKnife);
-        
+        deathrunPlayer.SendChatMessage($"You've selected the {{GREEN}}{newKnife.Name} {{DEFAULT}}knife. {{GRAY}}Bonus effect: {{GOLD}}{newKnife.Description}");
+
         return ECommandAction.Stopped;
     }
     
