@@ -7,7 +7,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Deathrun.Knives.Extensions;
 using Deathrun.Knives.Interfaces.Managers;
-using DeathrunManager.Shared.Objects;
+using DeathrunManager.Shared.DeathrunObjects;
 using MySqlConnector;
 using Sharp.Shared;
 using Sharp.Shared.Enums;
