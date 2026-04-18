@@ -4,7 +4,7 @@ using Deathrun.Knives.Managers;
 using Deathrun.Knives.Interfaces;
 using Deathrun.Knives.Interfaces.Managers;
 using DeathrunManager.Shared;
-using DeathrunManager.Shared.Objects;
+using DeathrunManager.Shared.DeathrunObjects;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
