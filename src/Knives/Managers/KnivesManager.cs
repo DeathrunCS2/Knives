@@ -52,14 +52,14 @@ internal class KnivesManager(
         clientManager.InstallCommandCallback("knife", OnClientKnivesCommand);
         clientManager.InstallCommandCallback("knives", OnClientKnivesCommand);
 
-        if (Config.SaveKnivesToDatabase is true)
-        {
-            //build connection string
-            BuildDbConnectionString();
+        //skip saving to db if the config option is disabled
+        if (Config.SaveKnivesToDatabase is not true) return true;
+        
+        //build connection string
+        BuildDbConnectionString();
 
-            //create the necessary db tables
-            SetupDatabaseTables();
-        }
+        //create the necessary db tables
+        SetupDatabaseTables();
         
         return true;
     }
@@ -85,10 +85,15 @@ internal class KnivesManager(
     
     private static void OnDeathrunPlayerCreated(IDeathrunPlayer deathrunPlayer)
     {
+        ulong steamId64 = deathrunPlayer.Client.SteamId;
+
+        //skip saving to db for bots
+        if (steamId64 is 0) return;
+        
         Task.Run(async () =>
         {
-            ulong steamId64 = deathrunPlayer.Client.SteamId;
             var savedKnifeIdentifier = await GetSavedKnife(steamId64);
+            
             SetKnife(steamId64, savedKnifeIdentifier);
         });
     }
@@ -97,13 +102,15 @@ internal class KnivesManager(
     {
         ulong steamId64 = deathrunPlayer.Client.SteamId;
         
-        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is true)
+        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is not true) return;
+        
+        //skip saving to db for bots
+        if (steamId64 is 0) return;
+        
+        Task.Run(async () => 
         {
-            Task.Run(async () => 
-            {
-                await SaveSelectedKnifeToDatabase(steamId64, removedPlayerAndKnife.Identifier);
-            });
-        }
+            await SaveSelectedKnifeToDatabase(steamId64, removedPlayerAndKnife.Identifier);
+        });
     }
     
     private void OnDeathrunPlayerThinkPost(IDeathrunPlayer deathrunPlayer)
