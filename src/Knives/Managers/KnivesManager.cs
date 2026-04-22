@@ -102,10 +102,10 @@ internal class KnivesManager(
     {
         ulong steamId64 = deathrunPlayer.Client.SteamId;
         
-        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is not true) return;
-        
-        //skip saving to db for bots
+        //skip saving to db for bots 
         if (steamId64 is 0) return;
+        
+        if (DeathrunPlayersKnives.TryRemove(steamId64, out var removedPlayerAndKnife) is not true) return;
         
         Task.Run(async () => 
         {
