@@ -115,20 +115,32 @@ internal class KnivesManager(
     
     private void OnDeathrunPlayerThinkPost(IDeathrunPlayer deathrunPlayer)
     {
+        var knifeBuffText = "";
+        
         if (deathrunPlayer.PlayerPawn?.IsAlive is true)
         {
-            deathrunPlayer.SetCenterMenuTopRowHtml
+            knifeBuffText =
+                $"<br/><font class='fontSize-sm stratum-font fontWeight-Bold' color='#A7A7A7'>Buff: </font>"
+                + $"<font class='fontSize-sm stratum-font fontWeight-Bold' color='#db900f'>( {deathrunPlayer.GetKnife().Description} )</font>";
+
+            deathrunPlayer.SetCenterMenuMiddleRowHtml
             (
-                $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.GetKnife().Name}</font>"    
+                $"<font class='fontSize-sm stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.GetKnife().Name} </font>"
+                + knifeBuffText    
             );
         }
         else
         {
-            deathrunPlayer.SetCenterMenuTopRowHtml
+            knifeBuffText =
+                $"<br/><font class='fontSize-sm stratum-font fontWeight-Bold' color='#A7A7A7'>Buff: </font>"
+                + $"<font class='fontSize-sm stratum-font fontWeight-Bold' color='#db900f'>( {deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Description} )</font>";
+            
+            deathrunPlayer.SetCenterMenuMiddleRowHtml
             (
-                $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
-                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Name}</font>"    
+                $"<font class='fontSize-sm stratum-font fontWeight-Bold' color='#A7A7A7'>Knife: </font>"
+                + $"<font class='fontSize-m stratum-font fontWeight-Bold' color='#efbfff'>{deathrunPlayer.ObservedDeathrunPlayer?.GetKnife().Name} </font>"
+                + knifeBuffText
             );
         }
         
